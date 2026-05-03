@@ -1,0 +1,3144 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<title>UniPlanner — Prototipo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #F6F3EC; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: var(--bg);
+    font-family: "Instrument Sans", system-ui, sans-serif;
+    color: #2C2A26;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background-image:
+      radial-gradient(circle at 10% 0%, oklch(0.94 0.03 145) 0%, transparent 35%),
+      radial-gradient(circle at 95% 90%, oklch(0.94 0.03 50) 0%, transparent 35%);
+    background-attachment: fixed;
+  }
+  button { font-family: inherit; }
+  .up-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .up-scroll::-webkit-scrollbar-thumb { background: #E4DED0; border-radius: 4px; }
+  .up-scroll::-webkit-scrollbar-track { background: transparent; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+// Mock data for Paula - estudiante de medicina, UNCuyo
+// Fecha de referencia: Abril 2026
+
+const TODAY = new Date('2026-04-19T09:30:00');
+
+const SUBJECTS = [
+  { id: 'sub-anat',  name: 'Anatomía II',           color: '#D98880', isActive: true,  code: 'ANT-201',
+    schedule: [
+      { day: 'MO', start: '08:00', end: '10:00', label: 'Teórico' },
+      { day: 'WE', start: '08:00', end: '10:00', label: 'Teórico' },
+      { day: 'TU', start: '14:00', end: '17:00', label: 'Práctico Disección' },
+    ]},
+  { id: 'sub-fisio', name: 'Fisiología',            color: '#85C1A1', isActive: true,  code: 'FIS-202',
+    schedule: [
+      { day: 'TU', start: '10:00', end: '12:00', label: 'Teórico' },
+      { day: 'TH', start: '10:00', end: '12:00', label: 'Teórico' },
+    ]},
+  { id: 'sub-histo', name: 'Histología',            color: '#E8B86D', isActive: true,  code: 'HIS-203',
+    schedule: [
+      { day: 'WE', start: '14:00', end: '17:00', label: 'Práctico' },
+    ]},
+  { id: 'sub-bioq',  name: 'Bioquímica Clínica',    color: '#A7C5E8', isActive: true,  code: 'BQC-204',
+    schedule: [
+      { day: 'TH', start: '09:00', end: '11:00', label: 'Teórico' },
+    ]},
+  { id: 'sub-micro', name: 'Microbiología',         color: '#C9A7E8', isActive: true,  code: 'MIC-205',
+    schedule: [
+      { day: 'FR', start: '14:00', end: '16:00', label: 'Teórico' },
+    ]},
+  { id: 'sub-sp',    name: 'Salud Pública',         color: '#B5B9AE', isActive: true,  code: 'SP-206',
+    schedule: [
+      { day: 'TU', start: '18:00', end: '20:00', label: 'Seminario' },
+    ]},
+  { id: 'sub-embrio',name: 'Embriología',           color: '#D4B08C', isActive: false, code: 'EMB-101',
+    schedule: [] },
+];
+
+// Helper to build ISO dates relative to TODAY
+const daysFrom = (days, hours = 9, mins = 0) => {
+  const d = new Date(TODAY);
+  d.setDate(d.getDate() + days);
+  d.setHours(hours, mins, 0, 0);
+  return d.toISOString();
+};
+
+const TASKS = [
+  // Anatomía
+  { id: 't-1',  subjectId: 'sub-anat', parentTaskId: null, title: 'Estudiar plexo braquial',
+    priority: 'URGENT', status: 'IN_PROGRESS', dueDate: daysFrom(1, 23, 59),
+    observations: 'Repasar inervación de miembro superior. Capítulo 14 del Rouvière.', createdAt: daysFrom(-5) },
+  { id: 't-2',  subjectId: 'sub-anat', parentTaskId: 't-1', title: 'Memorizar raíces C5-T1',
+    priority: 'HIGH', status: 'COMPLETED', dueDate: daysFrom(0, 20, 0),
+    observations: null, completedAt: daysFrom(-1), createdAt: daysFrom(-4) },
+  { id: 't-3',  subjectId: 'sub-anat', parentTaskId: 't-1', title: 'Dibujar diagrama de ramas terminales',
+    priority: 'MEDIUM', status: 'IN_PROGRESS', dueDate: daysFrom(1, 18, 0),
+    observations: 'Nervio mediano, cubital, radial, axilar, musculocutáneo.', createdAt: daysFrom(-3) },
+  { id: 't-4',  subjectId: 'sub-anat', parentTaskId: 't-1', title: 'Hacer flashcards Anki',
+    priority: 'LOW', status: 'NOT_STARTED', dueDate: null,
+    observations: null, createdAt: daysFrom(-2) },
+
+  // Fisiología
+  { id: 't-5',  subjectId: 'sub-fisio', parentTaskId: null, title: 'TP Laboratorio — ECG',
+    priority: 'HIGH', status: 'NOT_STARTED', dueDate: daysFrom(3, 14, 0),
+    observations: 'Traer guardapolvo y el cuadernillo. Grupo 4.', createdAt: daysFrom(-2) },
+  { id: 't-6',  subjectId: 'sub-fisio', parentTaskId: null, title: 'Leer capítulo 27 Guyton — riñón',
+    priority: 'MEDIUM', status: 'IN_PROGRESS', dueDate: daysFrom(4),
+    observations: null, createdAt: daysFrom(-1) },
+  { id: 't-7',  subjectId: 'sub-fisio', parentTaskId: 't-6', title: 'Resumen de filtración glomerular',
+    priority: 'MEDIUM', status: 'NOT_STARTED', dueDate: daysFrom(4),
+    observations: null, createdAt: daysFrom(-1) },
+
+  // Histología
+  { id: 't-8',  subjectId: 'sub-histo', parentTaskId: null, title: 'Informe de práctico — epitelios',
+    priority: 'URGENT', status: 'IN_PROGRESS', dueDate: daysFrom(2, 23, 59),
+    observations: 'Subir al campus antes de las 23:59. Mínimo 3 imágenes.', createdAt: daysFrom(-6) },
+
+  // Bioquímica
+  { id: 't-9',  subjectId: 'sub-bioq', parentTaskId: null, title: 'Resolver guía de lípidos',
+    priority: 'MEDIUM', status: 'NOT_STARTED', dueDate: daysFrom(6),
+    observations: null, createdAt: daysFrom(-1) },
+  { id: 't-10', subjectId: 'sub-bioq', parentTaskId: null, title: 'Preparar parcial integrador',
+    priority: 'HIGH', status: 'NOT_STARTED', dueDate: daysFrom(12),
+    observations: 'Del tema 1 al 8.', createdAt: daysFrom(0) },
+
+  // Microbiología
+  { id: 't-11', subjectId: 'sub-micro', parentTaskId: null, title: 'Ver clase grabada — Gram+',
+    priority: 'LOW', status: 'NOT_STARTED', dueDate: daysFrom(5),
+    observations: null, createdAt: daysFrom(0) },
+  { id: 't-12', subjectId: 'sub-micro', parentTaskId: null, title: 'Hacer cuestionario autoevaluación',
+    priority: 'MEDIUM', status: 'COMPLETED', dueDate: daysFrom(-2),
+    observations: 'Saqué 8/10 ✓', completedAt: daysFrom(-2), createdAt: daysFrom(-4) },
+
+  // Salud Pública
+  { id: 't-13', subjectId: 'sub-sp', parentTaskId: null, title: 'Ensayo epidemiología — 3 páginas',
+    priority: 'MEDIUM', status: 'NOT_STARTED', dueDate: daysFrom(8),
+    observations: null, createdAt: daysFrom(-1) },
+
+  // Tareas generales
+  { id: 't-14', subjectId: null, parentTaskId: null, title: 'Renovar carnet de biblioteca',
+    priority: 'LOW', status: 'NOT_STARTED', dueDate: daysFrom(10),
+    observations: 'Pasar por secretaría con DNI y foto.', createdAt: daysFrom(-1) },
+  { id: 't-15', subjectId: null, parentTaskId: null, title: 'Pagar cuota sindical',
+    priority: 'MEDIUM', status: 'NOT_STARTED', dueDate: daysFrom(2),
+    observations: null, createdAt: daysFrom(0) },
+  { id: 't-16', subjectId: null, parentTaskId: null, title: 'Comprar bata nueva',
+    priority: 'LOW', status: 'NOT_STARTED', dueDate: null,
+    observations: 'La actual tiene una mancha de formol.', createdAt: daysFrom(-3) },
+  { id: 't-17', subjectId: null, parentTaskId: null, title: 'Llamar al oftalmólogo',
+    priority: 'HIGH', status: 'COMPLETED', dueDate: daysFrom(-1),
+    observations: 'Turno reservado para el 5 de mayo.', completedAt: daysFrom(-1), createdAt: daysFrom(-2) },
+
+  // Vencida
+  { id: 't-18', subjectId: 'sub-anat', parentTaskId: null, title: 'Entregar guía de ejercicios nº4',
+    priority: 'URGENT', status: 'NOT_STARTED', dueDate: daysFrom(-1, 23, 59),
+    observations: 'La pasé por alto 😬', createdAt: daysFrom(-7) },
+];
+
+const EVENTS = [
+  // Exámenes (isExam: true)
+  { id: 'e-1', subjectId: 'sub-anat',  title: 'Parcial de Anatomía II', startTime: daysFrom(7, 8, 0),  endTime: daysFrom(7, 11, 0),  isExam: true,  recurrenceRule: null },
+  { id: 'e-2', subjectId: 'sub-fisio', title: 'Parcial de Fisiología',  startTime: daysFrom(14, 14, 0), endTime: daysFrom(14, 17, 0), isExam: true,  recurrenceRule: null },
+  { id: 'e-3', subjectId: 'sub-bioq',  title: 'Parcial Bioquímica integrador', startTime: daysFrom(12, 9, 0), endTime: daysFrom(12, 12, 0), isExam: true, recurrenceRule: null },
+  { id: 'e-4', subjectId: 'sub-histo', title: 'Coloquio Histología',    startTime: daysFrom(21, 10, 0), endTime: daysFrom(21, 12, 0), isExam: true,  recurrenceRule: null },
+
+  // (Clases recurrentes se derivan automáticamente de subject.schedule)
+
+  // Eventos generales
+  { id: 'e-12', subjectId: null, title: 'Cumple de Sofi 🎂',             startTime: daysFrom(5, 21, 0),  endTime: daysFrom(5, 23, 59), isExam: false, recurrenceRule: null },
+  { id: 'e-13', subjectId: null, title: 'Turno oftalmólogo',             startTime: daysFrom(16, 10, 30),endTime: daysFrom(16, 11, 30),isExam: false, recurrenceRule: null },
+  { id: 'e-14', subjectId: null, title: 'Grupo de estudio',              startTime: daysFrom(0, 18, 0),  endTime: daysFrom(0, 20, 0),  isExam: false, recurrenceRule: null },
+  { id: 'e-15', subjectId: null, title: 'Yoga',                          startTime: daysFrom(1, 19, 0),  endTime: daysFrom(1, 20, 0),  isExam: false, recurrenceRule: 'FREQ=WEEKLY;BYDAY=TU,TH' },
+];
+
+const QUICK_NOTES = [
+  { id: 'n-1', text: 'Preguntar a la Dra. Mendoza sobre la corrección del TP de histo — estuvo rara en la última clase.', createdAt: daysFrom(-1, 14, 20) },
+  { id: 'n-2', text: 'Mnemotecnia pares craneales:\n“OOO TTaTTo TTo AF Vague Ah”\nI-Olfatorio, II-Óptico, III-Oculomotor...', createdAt: daysFrom(-2, 22, 5) },
+  { id: 'n-3', text: 'Traer el USB con los slides de bioquímica el martes. NO OLVIDAR.', createdAt: daysFrom(0, 7, 55) },
+  { id: 'n-4', text: 'Libros recomendados por Fede:\n— Netter (anatomía)\n— Guyton (fisiología)\n— Ross (histología)', createdAt: daysFrom(-5, 18, 40) },
+];
+
+const PERSONAL_LISTS = [
+  {
+    id: 'pl-1', name: 'Fin de semana',
+    tasks: [
+      { id: 'pi-1', text: 'Colgar la ropa', done: false },
+      { id: 'pi-2', text: 'Ir al gym', done: true },
+      { id: 'pi-3', text: 'Comprar pan', done: false },
+      { id: 'pi-4', text: 'Llamar a mamá', done: true },
+      { id: 'pi-5', text: 'Regar las plantas', done: false },
+    ],
+  },
+  {
+    id: 'pl-2', name: 'Súper',
+    tasks: [
+      { id: 'pi-6',  text: 'Café', done: false },
+      { id: 'pi-7',  text: 'Leche de almendras', done: false },
+      { id: 'pi-8',  text: 'Huevos', done: false },
+      { id: 'pi-9',  text: 'Manzanas', done: false },
+      { id: 'pi-10', text: 'Palta', done: false },
+      { id: 'pi-11', text: 'Yogur griego', done: false },
+    ],
+  },
+  {
+    id: 'pl-3', name: 'Valija fin de semana en Córdoba',
+    tasks: [
+      { id: 'pi-12', text: 'Zapatillas', done: true },
+      { id: 'pi-13', text: 'Campera', done: true },
+      { id: 'pi-14', text: 'Cargador', done: true },
+      { id: 'pi-15', text: 'Libro', done: true },
+    ],
+  },
+  {
+    id: 'pl-4', name: 'Casa — pendientes',
+    tasks: [
+      { id: 'pi-16', text: 'Cambiar la lamparita del baño', done: false },
+      { id: 'pi-17', text: 'Pedir arreglo cerradura', done: false },
+    ],
+  },
+];
+
+Object.assign(window, { TODAY, SUBJECTS, TASKS, EVENTS, QUICK_NOTES, PERSONAL_LISTS });
+
+</script>
+
+<script type="text/babel">
+// Design tokens — "Journal académico, suave y amigable"
+// Paleta: off-white cálido + verde salvia académico
+// Tipografía: Fraunces (display serif) + Instrument Sans (UI)
+
+const UP_TOKENS = {
+  // Colors — warm off-white base, sage green accent
+  bg:       '#F6F3EC',       // off-white warm (paper)
+  bgAlt:    '#EFEAE0',       // cardboard subtle
+  surface:  '#FBFAF5',       // cards, elevated
+  surfaceAlt: '#F1EDE3',
+  ink:      '#2C2A26',       // warm black
+  inkSoft:  '#6B6860',       // secondary text
+  inkMuted: '#9A9689',       // tertiary text
+  line:     '#E4DED0',       // borders
+  lineSoft: '#EDE8DB',
+
+  // Accent — verde académico (oklch 0.55 0.12 145)
+  accent:      'oklch(0.55 0.12 145)',
+  accentDim:   'oklch(0.80 0.06 145)',
+  accentSoft:  'oklch(0.94 0.03 145)',
+  accentInk:   'oklch(0.32 0.08 145)',
+
+  // Semantic
+  danger:    'oklch(0.55 0.16 25)',
+  dangerSoft:'oklch(0.94 0.04 25)',
+  warn:      'oklch(0.70 0.14 70)',
+  warnSoft:  'oklch(0.95 0.05 70)',
+  info:      'oklch(0.60 0.10 240)',
+  infoSoft:  'oklch(0.94 0.03 240)',
+
+  // Priority chip colors (subtle, pastel)
+  priNone:   { bg: '#EDE8DB', fg: '#6B6860', dot: '#B5B09F' },
+  priLow:    { bg: '#E4EDE0', fg: '#4A5D3F', dot: '#8FAA7D' },
+  priMed:    { bg: '#EEE6D0', fg: '#6B5A2F', dot: '#C5A969' },
+  priHigh:   { bg: '#F0D9C8', fg: '#7A4A2C', dot: '#D9946B' },
+  priUrgent: { bg: '#EDCDC9', fg: '#8B3A3A', dot: '#C56B64' },
+
+  // Status
+  statNotStarted: { bg: '#EDE8DB', fg: '#6B6860' },
+  statInProgress: { bg: '#E1EFE7', fg: '#2F5D45' },
+  statCompleted:  { bg: '#D4E6D6', fg: '#3B6B44' },
+  statCancelled:  { bg: '#E6E1D6', fg: '#8A8578' },
+
+  // Radii — generous (journal feel)
+  r1: 10,
+  r2: 14,
+  r3: 20,
+  r4: 28,
+  rFull: 999,
+
+  // Shadows — very soft
+  shadowSm: '0 1px 2px rgba(44,42,38,0.04), 0 1px 0 rgba(44,42,38,0.02)',
+  shadowMd: '0 2px 6px rgba(44,42,38,0.05), 0 8px 24px rgba(44,42,38,0.04)',
+  shadowLg: '0 8px 24px rgba(44,42,38,0.08), 0 24px 60px rgba(44,42,38,0.06)',
+
+  // Type
+  fontDisplay: '"Fraunces", "Cormorant Garamond", Georgia, serif',
+  fontUI:      '"Instrument Sans", "Inter", -apple-system, sans-serif',
+  fontMono:    '"JetBrains Mono", "SF Mono", Menlo, monospace',
+};
+
+// Priority & status labels
+const PRIORITY_META = {
+  NONE:    { label: 'Sin prioridad', short: '—',   ...UP_TOKENS.priNone,   order: 0 },
+  LOW:     { label: 'Baja',          short: 'B',   ...UP_TOKENS.priLow,    order: 1 },
+  MEDIUM:  { label: 'Media',         short: 'M',   ...UP_TOKENS.priMed,    order: 2 },
+  HIGH:    { label: 'Alta',          short: 'A',   ...UP_TOKENS.priHigh,   order: 3 },
+  URGENT:  { label: 'Urgente',       short: '!',   ...UP_TOKENS.priUrgent, order: 4 },
+};
+
+const STATUS_META = {
+  NOT_STARTED: { label: 'Sin iniciar',  ...UP_TOKENS.statNotStarted },
+  IN_PROGRESS: { label: 'En curso',     ...UP_TOKENS.statInProgress },
+  COMPLETED:   { label: 'Completada',   ...UP_TOKENS.statCompleted  },
+  CANCELLED:   { label: 'Cancelada',    ...UP_TOKENS.statCancelled  },
+};
+
+// Date helpers
+const formatDate = (iso, opts = {}) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const days   = ['dom','lun','mar','mié','jue','vie','sáb'];
+  if (opts.withDay)  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+  if (opts.withTime) return `${d.getDate()} ${months[d.getMonth()]}, ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  if (opts.timeOnly) return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  if (opts.dayNum)   return `${d.getDate()}`;
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+};
+
+const daysBetween = (isoA, isoB) => {
+  const a = new Date(isoA); a.setHours(0,0,0,0);
+  const b = new Date(isoB); b.setHours(0,0,0,0);
+  return Math.round((a - b) / 86400000);
+};
+
+const relativeLabel = (iso, now) => {
+  if (!iso) return '';
+  const diff = daysBetween(iso, now);
+  if (diff === 0)  return 'Hoy';
+  if (diff === 1)  return 'Mañana';
+  if (diff === -1) return 'Ayer';
+  if (diff > 1 && diff <= 7)   return `en ${diff} días`;
+  if (diff < -1 && diff >= -7) return `hace ${-diff} días`;
+  return formatDate(iso, { withDay: true });
+};
+
+Object.assign(window, { UP_TOKENS, PRIORITY_META, STATUS_META, formatDate, daysBetween, relativeLabel });
+
+</script>
+
+<script type="text/babel">
+// Reusable primitives: icons, chips, buttons
+
+// Minimalist line icons — 20x20, stroke-based
+const Icon = ({ name, size = 20, stroke = 'currentColor', strokeWidth = 1.6, ...rest }) => {
+  const paths = {
+    home:       <><path d="M3 10.5L10 4l7 6.5V16a1 1 0 01-1 1h-3v-5H9v5H6a1 1 0 01-1-1v-4.5z"/></>,
+    calendar:   <><rect x="3" y="4.5" width="14" height="13" rx="2"/><path d="M3 8.5h14M7 3v3M13 3v3"/></>,
+    list:       <><path d="M7 5h10M7 10h10M7 15h10M3.5 5h.01M3.5 10h.01M3.5 15h.01"/></>,
+    tree:       <><path d="M5 4v3a2 2 0 002 2h8M7 14v-5M12 14h3M12 9v5"/><circle cx="5" cy="4" r="1.2"/><circle cx="15" cy="9" r="1.2"/><circle cx="7" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/></>,
+    book:       <><path d="M4 4v12a1 1 0 001 1h11V4H5a1 1 0 00-1 1zM8 4v13M4 14h12"/></>,
+    note:       <><path d="M5 3h7l3 3v11a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1zM12 3v3h3M7 10h6M7 13h6"/></>,
+    plus:       <><path d="M10 4v12M4 10h12"/></>,
+    check:      <><path d="M4 10.5l4 4 8-9"/></>,
+    x:          <><path d="M5 5l10 10M15 5L5 15"/></>,
+    clock:      <><circle cx="10" cy="10" r="7"/><path d="M10 6v4l3 2"/></>,
+    flag:       <><path d="M5 3v14M5 4h9l-2 3 2 3H5"/></>,
+    dot:        <><circle cx="10" cy="10" r="2.5" fill={stroke} stroke="none"/></>,
+    chevRight:  <><path d="M8 5l5 5-5 5"/></>,
+    chevDown:   <><path d="M5 8l5 5 5-5"/></>,
+    chevLeft:   <><path d="M12 5l-5 5 5 5"/></>,
+    search:     <><circle cx="9" cy="9" r="5"/><path d="M13 13l3 3"/></>,
+    filter:     <><path d="M3 5h14M6 10h8M9 15h2"/></>,
+    bell:       <><path d="M5 14V9a5 5 0 0110 0v5l1 2H4l1-2zM8 17a2 2 0 004 0"/></>,
+    sync:       <><path d="M4 7.5A6 6 0 0115 5M16 12.5A6 6 0 015 15M4 4v3h3M16 16v-3h-3"/></>,
+    wifi:       <><path d="M2 7.5a12 12 0 0116 0M5 10.5a8 8 0 0110 0M7.5 13.5a4 4 0 015 0"/><circle cx="10" cy="16" r="0.8" fill={stroke} stroke="none"/></>,
+    wifiOff:    <><path d="M3 4l14 14M8.5 12a3 3 0 013-0.5M5 9a9 9 0 012-1.5M14 8.5a8 8 0 011.5 1"/><circle cx="10" cy="16" r="0.8" fill={stroke} stroke="none"/></>,
+    dots:       <><circle cx="5" cy="10" r="1.3" fill={stroke} stroke="none"/><circle cx="10" cy="10" r="1.3" fill={stroke} stroke="none"/><circle cx="15" cy="10" r="1.3" fill={stroke} stroke="none"/></>,
+    pencil:     <><path d="M4 16l3-1 9-9-2-2-9 9-1 3zM12 5l2 2"/></>,
+    trash:      <><path d="M4 6h12M8 6V4h4v2M6 6l1 10h6l1-10"/></>,
+    settings:   <><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M18 10h-2M4 10H2M15.5 4.5l-1.5 1.5M6 14l-1.5 1.5M15.5 15.5L14 14M6 6L4.5 4.5"/></>,
+    google:     <><path d="M17 10.2c0-.65-.06-1.28-.17-1.88H10v3.56h3.92c-.17.9-.68 1.67-1.45 2.18v1.82h2.35c1.37-1.27 2.18-3.13 2.18-5.68z" fill="#4285F4" stroke="none"/><path d="M10 17.5c1.96 0 3.61-.65 4.82-1.76l-2.35-1.82c-.65.44-1.49.7-2.47.7-1.9 0-3.5-1.28-4.08-3H3.47v1.87A7.5 7.5 0 0010 17.5z" fill="#34A853" stroke="none"/><path d="M5.92 11.62A4.5 4.5 0 015.68 10c0-.56.1-1.1.24-1.62V6.51H3.47A7.5 7.5 0 002.5 10c0 1.21.29 2.36.97 3.49l2.45-1.87z" fill="#FBBC04" stroke="none"/><path d="M10 5.46c1.07 0 2.03.37 2.79 1.09l2.09-2.09A7.5 7.5 0 0010 2.5a7.5 7.5 0 00-6.53 4.01l2.45 1.87C6.5 6.74 8.1 5.46 10 5.46z" fill="#EA4335" stroke="none"/></>,
+    drive:      <><path d="M7 3l-4 7 3 5h8l3-5-4-7H7zM7 3l3 5h6M13 15l3-5M6 15l3-5-2-7" strokeLinejoin="round"/></>,
+    sparkles:   <><path d="M10 3l1.3 3.5L15 8l-3.7 1.5L10 13l-1.3-3.5L5 8l3.7-1.5L10 3zM15 13l.7 1.5L17 15l-1.3.5L15 17l-.7-1.5L13 15l1.3-.5L15 13z"/></>,
+    play:       <><path d="M6 4l10 6-10 6V4z"/></>,
+    pause:      <><path d="M6 4v12M14 4v12"/></>,
+    heart:      <><path d="M10 16.5s-6-3.5-6-8a3.5 3.5 0 016-2.5 3.5 3.5 0 016 2.5c0 4.5-6 8-6 8z"/></>,
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none"
+         stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" {...rest}>
+      {paths[name] || null}
+    </svg>
+  );
+};
+
+// Priority chip
+const PriorityChip = ({ value, compact = false, onClick }) => {
+  const p = PRIORITY_META[value];
+  return (
+    <span onClick={onClick} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: compact ? '2px 8px' : '4px 10px',
+      borderRadius: UP_TOKENS.rFull,
+      background: p.bg, color: p.fg,
+      fontSize: compact ? 11 : 12, fontWeight: 500,
+      fontFamily: UP_TOKENS.fontUI,
+      letterSpacing: 0.1,
+      cursor: onClick ? 'pointer' : 'default',
+      whiteSpace: 'nowrap',
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: 3, background: p.dot }} />
+      {p.label}
+    </span>
+  );
+};
+
+// Status chip
+const StatusChip = ({ value, compact = false, onClick }) => {
+  const s = STATUS_META[value];
+  return (
+    <span onClick={onClick} style={{
+      display: 'inline-flex', alignItems: 'center',
+      padding: compact ? '2px 8px' : '4px 10px',
+      borderRadius: UP_TOKENS.rFull,
+      background: s.bg, color: s.fg,
+      fontSize: compact ? 11 : 12, fontWeight: 500,
+      fontFamily: UP_TOKENS.fontUI, letterSpacing: 0.1,
+      cursor: onClick ? 'pointer' : 'default',
+      whiteSpace: 'nowrap',
+    }}>{s.label}</span>
+  );
+};
+
+// Subject chip (with color dot)
+const SubjectChip = ({ subject, compact = false }) => {
+  if (!subject) return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      color: UP_TOKENS.inkMuted, fontSize: compact ? 11 : 12,
+      fontFamily: UP_TOKENS.fontUI, fontStyle: 'italic',
+    }}>— General</span>
+  );
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: compact ? '2px 8px' : '3px 10px',
+      borderRadius: UP_TOKENS.rFull,
+      background: subject.color + '26', // ~15% alpha
+      color: UP_TOKENS.ink,
+      fontSize: compact ? 11 : 12, fontWeight: 500,
+      fontFamily: UP_TOKENS.fontUI,
+      whiteSpace: 'nowrap',
+    }}>
+      <span style={{
+        width: 7, height: 7, borderRadius: 3.5, background: subject.color,
+      }} />
+      {subject.name}
+    </span>
+  );
+};
+
+// Button
+const Button = ({ children, variant = 'primary', size = 'md', icon, iconRight, onClick, style, disabled }) => {
+  const sizes = {
+    sm: { padding: '6px 12px', fontSize: 13, gap: 6, iconSize: 14 },
+    md: { padding: '9px 16px', fontSize: 14, gap: 8, iconSize: 16 },
+    lg: { padding: '12px 22px', fontSize: 15, gap: 10, iconSize: 18 },
+  };
+  const variants = {
+    primary: { bg: UP_TOKENS.accent, fg: '#FBFAF5', border: 'transparent', hoverBg: UP_TOKENS.accentInk },
+    secondary: { bg: UP_TOKENS.surface, fg: UP_TOKENS.ink, border: UP_TOKENS.line, hoverBg: UP_TOKENS.bgAlt },
+    ghost: { bg: 'transparent', fg: UP_TOKENS.ink, border: 'transparent', hoverBg: UP_TOKENS.bgAlt },
+    soft: { bg: UP_TOKENS.accentSoft, fg: UP_TOKENS.accentInk, border: 'transparent', hoverBg: UP_TOKENS.accentDim },
+    danger: { bg: UP_TOKENS.dangerSoft, fg: UP_TOKENS.danger, border: 'transparent', hoverBg: UP_TOKENS.danger + '22' },
+  };
+  const s = sizes[size], v = variants[variant];
+  const [hover, setHover] = React.useState(false);
+  return (
+    <button
+      onClick={onClick} disabled={disabled}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: s.gap,
+        padding: s.padding, fontSize: s.fontSize, fontWeight: 500, letterSpacing: 0.1,
+        fontFamily: UP_TOKENS.fontUI,
+        background: hover && !disabled ? v.hoverBg : v.bg, color: v.fg,
+        border: `1px solid ${v.border}`, borderRadius: UP_TOKENS.rFull,
+        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
+        transition: 'background 150ms ease',
+        whiteSpace: 'nowrap',
+        ...style,
+      }}
+    >
+      {icon && <Icon name={icon} size={s.iconSize} />}
+      {children}
+      {iconRight && <Icon name={iconRight} size={s.iconSize} />}
+    </button>
+  );
+};
+
+// Icon button (square)
+const IconButton = ({ icon, onClick, title, size = 32, variant = 'ghost', style }) => {
+  const [hover, setHover] = React.useState(false);
+  const bgHover = variant === 'ghost' ? UP_TOKENS.bgAlt : UP_TOKENS.accentDim;
+  return (
+    <button
+      onClick={onClick} title={title}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{
+        width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: hover ? bgHover : 'transparent', border: 'none',
+        borderRadius: UP_TOKENS.rFull, color: UP_TOKENS.ink, cursor: 'pointer',
+        transition: 'background 150ms ease', ...style,
+      }}
+    >
+      <Icon name={icon} size={size * 0.55} />
+    </button>
+  );
+};
+
+// Checkbox (circular, journal style)
+const Checkbox = ({ checked, onChange, size = 20, color = UP_TOKENS.accent }) => (
+  <button
+    onClick={(e) => { e.stopPropagation(); onChange && onChange(!checked); }}
+    style={{
+      width: size, height: size, borderRadius: '50%',
+      background: checked ? color : 'transparent',
+      border: `1.5px solid ${checked ? color : UP_TOKENS.line}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      cursor: 'pointer', padding: 0,
+      transition: 'all 150ms ease', flexShrink: 0,
+    }}
+    aria-checked={checked} role="checkbox"
+  >
+    {checked && <Icon name="check" size={size * 0.6} stroke="#FBFAF5" strokeWidth={2.4} />}
+  </button>
+);
+
+// Card
+const Card = ({ children, style, onClick, padding = 20 }) => (
+  <div onClick={onClick} style={{
+    background: UP_TOKENS.surface,
+    border: `1px solid ${UP_TOKENS.line}`,
+    borderRadius: UP_TOKENS.r3,
+    padding,
+    cursor: onClick ? 'pointer' : 'default',
+    ...style,
+  }}>{children}</div>
+);
+
+// Section title (display font)
+const SectionTitle = ({ children, size = 'md', style }) => {
+  const sizes = {
+    sm: { fontSize: 18 },
+    md: { fontSize: 22 },
+    lg: { fontSize: 28 },
+    xl: { fontSize: 36 },
+  };
+  return (
+    <h2 style={{
+      fontFamily: UP_TOKENS.fontDisplay, fontWeight: 400,
+      color: UP_TOKENS.ink, margin: 0, letterSpacing: -0.3,
+      fontVariationSettings: '"opsz" 14, "SOFT" 50',
+      ...sizes[size], ...style,
+    }}>{children}</h2>
+  );
+};
+
+// Label
+const Label = ({ children, style }) => (
+  <div style={{
+    fontSize: 11, fontWeight: 600, letterSpacing: 0.8,
+    textTransform: 'uppercase', color: UP_TOKENS.inkMuted,
+    fontFamily: UP_TOKENS.fontUI,
+    ...style,
+  }}>{children}</div>
+);
+
+// Avatar
+const Avatar = ({ name = 'P', size = 32, bg }) => (
+  <div style={{
+    width: size, height: size, borderRadius: '50%',
+    background: bg || UP_TOKENS.accent,
+    color: '#FBFAF5', fontSize: size * 0.42, fontWeight: 500,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontFamily: UP_TOKENS.fontUI, flexShrink: 0,
+  }}>{name.charAt(0).toUpperCase()}</div>
+);
+
+// Text Input
+const TextInput = ({ value, onChange, placeholder, size = 'md', icon, style, onKeyDown, autoFocus }) => {
+  const sizes = {
+    sm: { padding: '6px 10px', fontSize: 13, iconSize: 14 },
+    md: { padding: '10px 14px', fontSize: 14, iconSize: 16 },
+  };
+  const s = sizes[size];
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      background: UP_TOKENS.surfaceAlt,
+      border: `1px solid transparent`,
+      borderRadius: UP_TOKENS.rFull,
+      padding: s.padding,
+      fontFamily: UP_TOKENS.fontUI,
+      ...style,
+    }}>
+      {icon && <Icon name={icon} size={s.iconSize} stroke={UP_TOKENS.inkMuted} />}
+      <input
+        value={value || ''} onChange={e => onChange && onChange(e.target.value)}
+        placeholder={placeholder} onKeyDown={onKeyDown} autoFocus={autoFocus}
+        style={{
+          flex: 1, border: 'none', background: 'transparent', outline: 'none',
+          fontSize: s.fontSize, color: UP_TOKENS.ink, fontFamily: 'inherit',
+        }}
+      />
+    </div>
+  );
+};
+
+Object.assign(window, {
+  Icon, PriorityChip, StatusChip, SubjectChip,
+  Button, IconButton, Checkbox, Card, SectionTitle, Label, Avatar, TextInput,
+});
+
+</script>
+
+<script type="text/babel">
+// Dashboard — Welcome + upcoming tasks + exams + today's events + quick notes
+
+const Dashboard = ({ state, dispatch, navigate, compact }) => {
+  const { tasks, events, subjects, quickNotes, now } = state;
+  const subjectById = Object.fromEntries(subjects.map(s => [s.id, s]));
+  const DAY_TO_IDX = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+
+  // Derive recurring class events from ACTIVE subjects' schedule
+  const scheduleEvents = React.useMemo(() => {
+    const out = [];
+    for (const s of subjects) {
+      if (!s.isActive || !s.schedule) continue;
+      for (const slot of s.schedule) {
+        const [sh, sm] = (slot.start || '08:00').split(':').map(Number);
+        const [eh, em] = (slot.end   || '10:00').split(':').map(Number);
+        const anchorDate = new Date(now);
+        anchorDate.setDate(anchorDate.getDate() - anchorDate.getDay() + DAY_TO_IDX[slot.day]);
+        const st = new Date(anchorDate); st.setHours(sh, sm, 0, 0);
+        const en = new Date(anchorDate); en.setHours(eh, em, 0, 0);
+        out.push({
+          id: `sched-${s.id}-${slot.day}-${slot.start}`,
+          subjectId: s.id,
+          title: slot.label ? `${slot.label} — ${s.name}` : s.name,
+          startTime: st.toISOString(),
+          endTime: en.toISOString(),
+          isExam: false,
+          recurrenceRule: `FREQ=WEEKLY;BYDAY=${slot.day}`,
+          _fromSchedule: true,
+        });
+      }
+    }
+    return out;
+  }, [subjects, now]);
+
+  const allEvents = React.useMemo(() => [...events, ...scheduleEvents]
+    .filter(e => !e.subjectId || !subjectById[e.subjectId] || subjectById[e.subjectId].isActive),
+    [events, scheduleEvents, subjects]);
+
+  // Upcoming tasks — next 7 days, not completed
+  const upcoming = tasks
+    .filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELLED' && t.dueDate)
+    .filter(t => {
+      const d = daysBetween(t.dueDate, now);
+      return d >= 0 && d <= 7;
+    })
+    .sort((a,b) => (PRIORITY_META[b.priority].order - PRIORITY_META[a.priority].order) || new Date(a.dueDate) - new Date(b.dueDate))
+    .slice(0, 5);
+
+  // Overdue tasks
+  const overdue = tasks.filter(t =>
+    t.status !== 'COMPLETED' && t.status !== 'CANCELLED' &&
+    t.dueDate && daysBetween(t.dueDate, now) < 0
+  );
+
+  // Upcoming exams — next 30 days
+  const exams = allEvents
+    .filter(e => e.isExam)
+    .filter(e => {
+      const d = daysBetween(e.startTime, now);
+      return d >= 0 && d <= 30;
+    })
+    .sort((a,b) => new Date(a.startTime) - new Date(b.startTime))
+    .slice(0, 4);
+
+  // Today's events (expanded from recurrence approximately)
+  const todaysEvents = allEvents.filter(e => {
+    const d = daysBetween(e.startTime, now);
+    if (d === 0) return true;
+    if (e.recurrenceRule && e.recurrenceRule.includes('WEEKLY')) {
+      // check same day-of-week
+      return new Date(e.startTime).getDay() === now.getDay() && daysBetween(e.startTime, now) <= 0;
+    }
+    return false;
+  }).sort((a,b) => {
+    const ah = new Date(a.startTime).getHours() * 60 + new Date(a.startTime).getMinutes();
+    const bh = new Date(b.startTime).getHours() * 60 + new Date(b.startTime).getMinutes();
+    return ah - bh;
+  });
+
+  const today = state.now;
+  const dayNames = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+  return (
+    <div style={{ padding: compact ? 16 : 32, maxWidth: 1240, margin: '0 auto' }}>
+      {/* Hero greeting */}
+      <div style={{ marginBottom: compact ? 20 : 32 }}>
+        <div style={{
+          fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase',
+          color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontUI,
+          marginBottom: 6,
+        }}>
+          {dayNames[today.getDay()]} · {today.getDate()} de {monthNames[today.getMonth()]}
+        </div>
+        <SectionTitle size={compact ? 'lg' : 'xl'} style={{ marginBottom: 4 }}>
+          Buenos días, <em style={{ fontStyle: 'italic' }}>Paula</em>.
+        </SectionTitle>
+        <div style={{
+          fontSize: compact ? 14 : 15, color: UP_TOKENS.inkSoft,
+          fontFamily: UP_TOKENS.fontUI,
+        }}>
+          Tenés <strong style={{ color: UP_TOKENS.ink }}>{upcoming.length} tareas</strong> en los próximos 7 días
+          {overdue.length > 0 && (
+            <> y <strong style={{ color: UP_TOKENS.danger }}>{overdue.length} vencida{overdue.length>1?'s':''}</strong></>
+          )}.
+        </div>
+      </div>
+
+      {/* Stat strip */}
+      <div style={{
+        display: 'grid', gap: compact ? 8 : 12,
+        gridTemplateColumns: compact ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        marginBottom: compact ? 20 : 28,
+      }}>
+        <StatCard label="En curso"   value={tasks.filter(t=>t.status==='IN_PROGRESS').length} sub="tareas activas" />
+        <StatCard label="Completadas esta semana" value={tasks.filter(t=>t.status==='COMPLETED').length} sub="buen trabajo ✦" accent />
+        <StatCard label="Próximos exámenes" value={exams.length} sub="en 30 días" />
+        <StatCard label="Vencidas" value={overdue.length} sub={overdue.length ? 'requieren atención' : 'todo al día'} danger={overdue.length > 0} />
+      </div>
+
+      <div style={{
+        display: 'grid', gap: compact ? 16 : 20,
+        gridTemplateColumns: compact ? '1fr' : '1.3fr 1fr',
+      }}>
+        {/* LEFT column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? 16 : 20 }}>
+          {/* Próximas tareas */}
+          <Card padding={compact ? 18 : 24}>
+            <SectionHeader title="Próximas tareas" action="Ver todas" onAction={() => navigate('tasks-table')} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 14 }}>
+              {upcoming.length === 0 && <EmptyState text="No hay tareas próximas. ¡Respirá!" />}
+              {upcoming.map(t => (
+                <TaskMiniRow key={t.id} task={t} subject={subjectById[t.subjectId]}
+                  now={now} dispatch={dispatch} />
+              ))}
+            </div>
+          </Card>
+
+          {/* Eventos de hoy */}
+          <Card padding={compact ? 18 : 24}>
+            <SectionHeader title="Agenda de hoy" action="Calendario" onAction={() => navigate('calendar')} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+              {todaysEvents.length === 0 && <EmptyState text="Día libre. Un buen momento para adelantar." />}
+              {todaysEvents.map(e => (
+                <TodayEventRow key={e.id} event={e} subject={subjectById[e.subjectId]} />
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* RIGHT column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? 16 : 20 }}>
+          {/* Exámenes */}
+          <Card padding={compact ? 18 : 24} style={{ background: UP_TOKENS.accentSoft, border: `1px solid ${UP_TOKENS.accentDim}44` }}>
+            <SectionHeader title="Próximos exámenes" action="Ver materias" onAction={() => navigate('subjects')} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>
+              {exams.map(ex => (
+                <ExamRow key={ex.id} exam={ex} subject={subjectById[ex.subjectId]} now={now} />
+              ))}
+            </div>
+          </Card>
+
+          {/* Quick Notes */}
+          <Card padding={compact ? 18 : 24} style={{
+            background: `repeating-linear-gradient(to bottom, ${UP_TOKENS.surface}, ${UP_TOKENS.surface} 29px, ${UP_TOKENS.lineSoft} 29px, ${UP_TOKENS.lineSoft} 30px)`,
+          }}>
+            <SectionHeader title="Notas rápidas" />
+            <QuickNoteComposer onAdd={(text) => dispatch({ type: 'ADD_NOTE', text })} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+              {quickNotes.slice(0,3).map(n => (
+                <QuickNote key={n.id} note={n} onDelete={() => dispatch({ type: 'DELETE_NOTE', id: n.id })} />
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StatCard = ({ label, value, sub, accent, danger }) => (
+  <Card padding={16} style={{
+    background: accent ? UP_TOKENS.accentSoft : danger ? UP_TOKENS.dangerSoft : UP_TOKENS.surface,
+    border: `1px solid ${accent ? UP_TOKENS.accentDim+'55' : danger ? UP_TOKENS.danger+'33' : UP_TOKENS.line}`,
+  }}>
+    <div style={{
+      fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase',
+      color: danger ? UP_TOKENS.danger : accent ? UP_TOKENS.accentInk : UP_TOKENS.inkMuted,
+      fontFamily: UP_TOKENS.fontUI, fontWeight: 600,
+    }}>{label}</div>
+    <div style={{
+      fontFamily: UP_TOKENS.fontDisplay, fontSize: 40, lineHeight: 1,
+      color: danger ? UP_TOKENS.danger : accent ? UP_TOKENS.accentInk : UP_TOKENS.ink,
+      marginTop: 4, fontWeight: 400, fontVariationSettings: '"opsz" 36',
+    }}>{value}</div>
+    <div style={{ fontSize: 12, color: UP_TOKENS.inkSoft, marginTop: 2, fontFamily: UP_TOKENS.fontUI }}>{sub}</div>
+  </Card>
+);
+
+const SectionHeader = ({ title, action, onAction }) => (
+  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+    <SectionTitle size="md">{title}</SectionTitle>
+    {action && (
+      <button onClick={onAction} style={{
+        background: 'transparent', border: 'none', cursor: 'pointer',
+        color: UP_TOKENS.accentInk, fontSize: 13, fontWeight: 500,
+        fontFamily: UP_TOKENS.fontUI, padding: 0,
+      }}>{action} →</button>
+    )}
+  </div>
+);
+
+const EmptyState = ({ text }) => (
+  <div style={{
+    padding: '24px 8px', textAlign: 'center',
+    color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontDisplay,
+    fontStyle: 'italic', fontSize: 15,
+  }}>{text}</div>
+);
+
+const TaskMiniRow = ({ task, subject, now, dispatch }) => {
+  const diff = task.dueDate ? daysBetween(task.dueDate, now) : null;
+  const isOverdue = diff !== null && diff < 0;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '10px 0', borderBottom: `1px dashed ${UP_TOKENS.lineSoft}`,
+    }}>
+      <Checkbox checked={task.status === 'COMPLETED'}
+        onChange={() => dispatch({ type: 'TOGGLE_TASK', id: task.id })} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 14, color: UP_TOKENS.ink, fontFamily: UP_TOKENS.fontUI,
+          fontWeight: 500, marginBottom: 2,
+          textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap',
+        }}>{task.title}</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <SubjectChip subject={subject} compact />
+          {task.dueDate && (
+            <span style={{
+              fontSize: 11, fontFamily: UP_TOKENS.fontUI,
+              color: isOverdue ? UP_TOKENS.danger : UP_TOKENS.inkSoft,
+              fontWeight: isOverdue ? 600 : 400,
+            }}>
+              {relativeLabel(task.dueDate, now)}
+            </span>
+          )}
+        </div>
+      </div>
+      <PriorityChip value={task.priority} compact />
+    </div>
+  );
+};
+
+const TodayEventRow = ({ event, subject }) => {
+  const time = formatDate(event.startTime, { timeOnly: true });
+  const endTime = formatDate(event.endTime, { timeOnly: true });
+  return (
+    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+      <div style={{
+        minWidth: 64, fontFamily: UP_TOKENS.fontMono, fontSize: 13,
+        color: UP_TOKENS.inkSoft, paddingTop: 2,
+      }}>{time}<span style={{ opacity: 0.5 }}>–{endTime}</span></div>
+      <div style={{
+        width: 3, alignSelf: 'stretch', minHeight: 36,
+        borderRadius: 2, background: subject?.color || UP_TOKENS.accent,
+      }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 14, color: UP_TOKENS.ink, fontFamily: UP_TOKENS.fontUI,
+          fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          {event.title}
+          {event.isExam && (
+            <span style={{
+              fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase',
+              background: UP_TOKENS.danger, color: '#fff',
+              padding: '2px 7px', borderRadius: UP_TOKENS.rFull, fontWeight: 600,
+            }}>examen</span>
+          )}
+        </div>
+        {subject && (
+          <div style={{ fontSize: 12, color: UP_TOKENS.inkSoft, marginTop: 2, fontFamily: UP_TOKENS.fontUI }}>
+            {subject.name}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ExamRow = ({ exam, subject, now }) => {
+  const diff = daysBetween(exam.startTime, now);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div style={{
+        width: 52, height: 52, borderRadius: UP_TOKENS.r2,
+        background: UP_TOKENS.surface,
+        border: `1px solid ${UP_TOKENS.accentDim}77`,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <div style={{
+          fontSize: 9, fontFamily: UP_TOKENS.fontUI, color: UP_TOKENS.accentInk,
+          textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600,
+        }}>{formatDate(exam.startTime).split(' ')[1]}</div>
+        <div style={{
+          fontSize: 22, fontFamily: UP_TOKENS.fontDisplay, color: UP_TOKENS.accentInk,
+          lineHeight: 1, fontWeight: 500,
+        }}>{new Date(exam.startTime).getDate()}</div>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: UP_TOKENS.ink, fontFamily: UP_TOKENS.fontUI }}>
+          {subject?.name}
+        </div>
+        <div style={{ fontSize: 12, color: UP_TOKENS.inkSoft, fontFamily: UP_TOKENS.fontUI, marginTop: 2 }}>
+          {exam.title} · {formatDate(exam.startTime, { timeOnly: true })}
+        </div>
+      </div>
+      <div style={{
+        fontSize: 11, fontFamily: UP_TOKENS.fontUI,
+        color: diff <= 3 ? UP_TOKENS.danger : UP_TOKENS.inkSoft,
+        fontWeight: 600, textAlign: 'right',
+      }}>
+        {diff === 0 ? 'HOY' : `en ${diff}d`}
+      </div>
+    </div>
+  );
+};
+
+const QuickNoteComposer = ({ onAdd }) => {
+  const [text, setText] = React.useState('');
+  const submit = () => { if (text.trim()) { onAdd(text.trim()); setText(''); } };
+  return (
+    <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+      <input
+        value={text} onChange={e => setText(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && submit()}
+        placeholder="Anotá algo rápido…"
+        style={{
+          flex: 1, padding: '8px 14px', fontSize: 13,
+          background: UP_TOKENS.surface, border: `1px solid ${UP_TOKENS.line}`,
+          borderRadius: UP_TOKENS.rFull, outline: 'none',
+          fontFamily: UP_TOKENS.fontUI, color: UP_TOKENS.ink,
+        }}
+      />
+      <IconButton icon="plus" size={32} variant="soft" onClick={submit} />
+    </div>
+  );
+};
+
+const QuickNote = ({ note, onDelete }) => {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{
+        padding: '8px 0', position: 'relative',
+        borderBottom: `1px dashed ${UP_TOKENS.lineSoft}`,
+      }}>
+      <div style={{
+        fontSize: 13, color: UP_TOKENS.ink, lineHeight: 1.7,
+        fontFamily: UP_TOKENS.fontDisplay, fontStyle: 'italic',
+        whiteSpace: 'pre-wrap',
+      }}>{note.text}</div>
+      {hover && (
+        <button onClick={onDelete} style={{
+          position: 'absolute', top: 4, right: 0, border: 'none',
+          background: 'transparent', cursor: 'pointer',
+          color: UP_TOKENS.inkMuted, padding: 4,
+        }}><Icon name="x" size={14} /></button>
+      )}
+    </div>
+  );
+};
+
+Object.assign(window, { Dashboard });
+
+</script>
+
+<script type="text/babel">
+// Calendar — month/week/day views + events + exams
+
+const WEEKDAYS_ES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+// Toggle chip for calendar layers (horarios / agenda)
+const LayerChip = ({ active, onClick, label, color, dotStyle = 'solid' }) => (
+  <button onClick={onClick} style={{
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    padding: '6px 12px', fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+    background: active ? UP_TOKENS.surface : 'transparent',
+    color: active ? UP_TOKENS.ink : UP_TOKENS.inkMuted,
+    border: 'none', borderRadius: UP_TOKENS.rFull, cursor: 'pointer',
+    fontWeight: 500, letterSpacing: 0.2,
+    boxShadow: active ? UP_TOKENS.shadowSm : 'none',
+    opacity: active ? 1 : 0.7,
+  }}>
+    <span style={{
+      width: 8, height: 8, borderRadius: 2,
+      background: active ? color : 'transparent',
+      border: active ? 'none' : `1.5px ${dotStyle === 'dashed' ? 'dashed' : 'solid'} ${UP_TOKENS.inkMuted}`,
+      display: 'inline-block',
+    }}/>
+    {label}
+  </button>
+);
+const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// Expand events (including recurring) for a given date range
+const expandEvents = (events, rangeStart, rangeEnd) => {
+  const results = [];
+  for (const e of events) {
+    const start = new Date(e.startTime);
+    const end = new Date(e.endTime);
+    const duration = end - start;
+    if (!e.recurrenceRule) {
+      if (start >= rangeStart && start <= rangeEnd) results.push({ ...e, _start: new Date(start), _end: new Date(end) });
+      continue;
+    }
+    // Parse simple RRULE FREQ=WEEKLY;BYDAY=MO,WE
+    const days = { MO:1, TU:2, WE:3, TH:4, FR:5, SA:6, SU:0 };
+    const byday = (e.recurrenceRule.match(/BYDAY=([A-Z,]+)/) || [])[1];
+    const targetDays = byday ? byday.split(',').map(d => days[d]) : [start.getDay()];
+    let cursor = new Date(rangeStart);
+    cursor.setHours(0,0,0,0);
+    while (cursor <= rangeEnd) {
+      if (targetDays.includes(cursor.getDay()) && cursor >= new Date(start.getFullYear(), start.getMonth(), start.getDate())) {
+        const occStart = new Date(cursor);
+        occStart.setHours(start.getHours(), start.getMinutes(), 0, 0);
+        const occEnd = new Date(occStart.getTime() + duration);
+        results.push({ ...e, _start: occStart, _end: occEnd });
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  }
+  return results.sort((a,b) => a._start - b._start);
+};
+
+// Also inject task deadlines as calendar indicators
+const taskIndicators = (tasks, rangeStart, rangeEnd) => {
+  return tasks
+    .filter(t => t.dueDate && t.status !== 'COMPLETED' && t.status !== 'CANCELLED')
+    .filter(t => {
+      const d = new Date(t.dueDate);
+      return d >= rangeStart && d <= rangeEnd;
+    })
+    .map(t => ({ ...t, _start: new Date(t.dueDate), _type: 'task-due' }));
+};
+
+const Calendar = ({ state, dispatch, compact }) => {
+  const { events, tasks, subjects, now } = state;
+  const subjectById = Object.fromEntries(subjects.map(s => [s.id, s]));
+
+  // Derive recurring class events from each ACTIVE subject's schedule
+  const scheduleEvents = React.useMemo(() => {
+    const out = [];
+    for (const s of subjects) {
+      if (!s.isActive || !s.schedule) continue;
+      for (const slot of s.schedule) {
+        const [sh, sm] = (slot.start || '08:00').split(':').map(Number);
+        const [eh, em] = (slot.end   || '10:00').split(':').map(Number);
+        // anchor to a recent Monday so RRULE expansion works — date part is irrelevant
+        const anchorDate = new Date(now);
+        anchorDate.setDate(anchorDate.getDate() - anchorDate.getDay() + 1);
+        const st = new Date(anchorDate); st.setHours(sh, sm, 0, 0);
+        const en = new Date(anchorDate); en.setHours(eh, em, 0, 0);
+        out.push({
+          id: `sched-${s.id}-${slot.day}-${slot.start}`,
+          subjectId: s.id,
+          title: slot.label ? `${slot.label} — ${s.name}` : s.name,
+          startTime: st.toISOString(),
+          endTime: en.toISOString(),
+          isExam: false,
+          recurrenceRule: `FREQ=WEEKLY;BYDAY=${slot.day}`,
+          _fromSchedule: true,
+        });
+      }
+    }
+    return out;
+  }, [subjects, now]);
+
+  const allEvents = React.useMemo(() => [...events, ...scheduleEvents], [events, scheduleEvents]);
+
+  const [view, setView] = React.useState(compact ? 'week' : 'month');
+  const [anchor, setAnchor] = React.useState(new Date(now));
+  // Layer toggles — horarios (clases recurrentes) vs agenda (eventos puntuales + exámenes)
+  const [showSchedule, setShowSchedule] = React.useState(true);
+  const [showAgenda, setShowAgenda] = React.useState(true);
+
+  const visibleEvents = allEvents.filter(e => {
+    // Hide anything tied to an archived subject
+    if (e.subjectId && subjectById[e.subjectId] && !subjectById[e.subjectId].isActive) return false;
+    const isSchedule = !!e.recurrenceRule && !e.isExam;
+    const isAgenda = !isSchedule;
+    if (isSchedule && !showSchedule) return false;
+    if (isAgenda && !showAgenda) return false;
+    return true;
+  });
+
+  // View ranges
+  const rangeStart = new Date(anchor), rangeEnd = new Date(anchor);
+  if (view === 'month') {
+    rangeStart.setDate(1);
+    rangeStart.setDate(rangeStart.getDate() - ((rangeStart.getDay() + 6) % 7));
+    rangeStart.setHours(0,0,0,0);
+    rangeEnd.setMonth(rangeEnd.getMonth() + 1, 0);
+    rangeEnd.setDate(rangeEnd.getDate() + (7 - ((rangeEnd.getDay() + 6) % 7 + 1)) % 7);
+    rangeEnd.setHours(23,59,59,999);
+  } else if (view === 'week') {
+    rangeStart.setDate(rangeStart.getDate() - ((rangeStart.getDay() + 6) % 7));
+    rangeStart.setHours(0,0,0,0);
+    rangeEnd.setTime(rangeStart.getTime());
+    rangeEnd.setDate(rangeEnd.getDate() + 6);
+    rangeEnd.setHours(23,59,59,999);
+  } else {
+    rangeStart.setHours(0,0,0,0);
+    rangeEnd.setTime(rangeStart.getTime());
+    rangeEnd.setHours(23,59,59,999);
+  }
+
+  const expanded = expandEvents(visibleEvents, rangeStart, rangeEnd);
+  const taskDues = taskIndicators(tasks, rangeStart, rangeEnd);
+
+  const nav = (dir) => {
+    const d = new Date(anchor);
+    if (view === 'month') d.setMonth(d.getMonth() + dir);
+    else if (view === 'week') d.setDate(d.getDate() + 7 * dir);
+    else d.setDate(d.getDate() + dir);
+    setAnchor(d);
+  };
+
+  const headerTitle = view === 'month'
+    ? `${MONTHS_ES[anchor.getMonth()]} ${anchor.getFullYear()}`
+    : view === 'week'
+      ? `Semana del ${rangeStart.getDate()} ${MONTHS_ES[rangeStart.getMonth()].slice(0,3).toLowerCase()}`
+      : `${WEEKDAYS_ES[(anchor.getDay()+6)%7]}, ${anchor.getDate()} ${MONTHS_ES[anchor.getMonth()].toLowerCase()}`;
+
+  return (
+    <div style={{ padding: compact ? 16 : 32, maxWidth: 1240, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <SectionTitle size={compact ? 'md' : 'lg'}>{headerTitle}</SectionTitle>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Layer toggles */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: UP_TOKENS.surfaceAlt, padding: 3,
+            borderRadius: UP_TOKENS.rFull,
+          }}>
+            <LayerChip active={showSchedule} onClick={() => setShowSchedule(!showSchedule)}
+              color={UP_TOKENS.accent} label={compact ? 'Horarios' : 'Horarios'} dotStyle="solid" />
+            <LayerChip active={showAgenda} onClick={() => setShowAgenda(!showAgenda)}
+              color={UP_TOKENS.danger} label={compact ? 'Agenda' : 'Agenda'} dotStyle="dashed" />
+          </div>
+          <div style={{
+            display: 'flex', background: UP_TOKENS.surfaceAlt,
+            padding: 3, borderRadius: UP_TOKENS.rFull, gap: 2,
+          }}>
+            {['day','week','month'].map(v => (
+              <button key={v} onClick={() => setView(v)} style={{
+                padding: '6px 14px', fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+                background: view === v ? UP_TOKENS.surface : 'transparent',
+                color: view === v ? UP_TOKENS.ink : UP_TOKENS.inkSoft,
+                border: 'none', borderRadius: UP_TOKENS.rFull, cursor: 'pointer',
+                fontWeight: 500, letterSpacing: 0.2,
+                boxShadow: view === v ? UP_TOKENS.shadowSm : 'none',
+              }}>{v === 'day' ? 'Día' : v === 'week' ? 'Semana' : 'Mes'}</button>
+            ))}
+          </div>
+          <IconButton icon="chevLeft" onClick={() => nav(-1)} />
+          <Button variant="secondary" size="sm" onClick={() => setAnchor(new Date(now))}>Hoy</Button>
+          <IconButton icon="chevRight" onClick={() => nav(1)} />
+          <Button variant="primary" size="sm" icon="plus">Nuevo</Button>
+        </div>
+      </div>
+
+      {view === 'month' && <MonthView {...{ anchor, rangeStart, rangeEnd, expanded, taskDues, subjectById, now, compact }} />}
+      {view === 'week' && <WeekView {...{ rangeStart, expanded, taskDues, subjectById, now, compact }} />}
+      {view === 'day' && <DayView {...{ anchor, expanded, taskDues, subjectById, now }} />}
+    </div>
+  );
+};
+
+const MonthView = ({ anchor, rangeStart, rangeEnd, expanded, taskDues, subjectById, now, compact }) => {
+  const cells = [];
+  let c = new Date(rangeStart);
+  while (c <= rangeEnd) {
+    cells.push(new Date(c));
+    c.setDate(c.getDate() + 1);
+  }
+
+  const eventsByDay = {};
+  expanded.forEach(e => {
+    const key = e._start.toDateString();
+    eventsByDay[key] = eventsByDay[key] || [];
+    eventsByDay[key].push(e);
+  });
+  const tasksByDay = {};
+  taskDues.forEach(t => {
+    const key = t._start.toDateString();
+    tasksByDay[key] = tasksByDay[key] || [];
+    tasksByDay[key].push(t);
+  });
+
+  return (
+    <Card padding={0} style={{ overflow: 'hidden' }}>
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7,1fr)',
+        background: UP_TOKENS.bgAlt, borderBottom: `1px solid ${UP_TOKENS.line}`,
+      }}>
+        {WEEKDAYS_ES.map(d => (
+          <div key={d} style={{
+            padding: '10px 12px', fontSize: 11, letterSpacing: 0.8,
+            textTransform: 'uppercase', color: UP_TOKENS.inkMuted,
+            fontWeight: 600, fontFamily: UP_TOKENS.fontUI,
+          }}>{d}</div>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)' }}>
+        {cells.map((day, i) => {
+          const isCurrentMonth = day.getMonth() === anchor.getMonth();
+          const isToday = day.toDateString() === now.toDateString();
+          const dayEvents = eventsByDay[day.toDateString()] || [];
+          const dayTasks = tasksByDay[day.toDateString()] || [];
+          return (
+            <div key={i} style={{
+              minHeight: compact ? 70 : 110,
+              padding: 6, borderRight: `1px solid ${UP_TOKENS.lineSoft}`,
+              borderBottom: `1px solid ${UP_TOKENS.lineSoft}`,
+              background: isToday ? UP_TOKENS.accentSoft : UP_TOKENS.surface,
+              opacity: isCurrentMonth ? 1 : 0.4,
+            }}>
+              <div style={{
+                fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+                color: isToday ? UP_TOKENS.accentInk : UP_TOKENS.ink,
+                fontWeight: isToday ? 700 : 500,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 22, height: 22, borderRadius: '50%',
+                background: isToday ? UP_TOKENS.accent : 'transparent',
+                color: isToday ? '#FBFAF5' : UP_TOKENS.ink,
+              }}>{day.getDate()}</div>
+              <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {dayEvents.slice(0,compact?2:3).map((e,j) => {
+                  const isSched = !!e.recurrenceRule && !e.isExam;
+                  return (
+                  <div key={j} style={{
+                    fontSize: 10, padding: '1px 5px', borderRadius: 4,
+                    background: e.isExam ? UP_TOKENS.danger : (subjectById[e.subjectId]?.color + (isSched?'22':'44') || UP_TOKENS.accentSoft),
+                    color: e.isExam ? '#fff' : UP_TOKENS.ink,
+                    fontFamily: UP_TOKENS.fontUI, fontWeight: e.isExam ? 600 : 500,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    borderLeft: !e.isExam ? `2px ${isSched?'dashed':'solid'} ${subjectById[e.subjectId]?.color || UP_TOKENS.accent}` : 'none',
+                    opacity: isSched ? 0.85 : 1,
+                  }}>
+                    {e.isExam && '◆ '}{isSched && '◌ '}{e.title}
+                  </div>
+                  );
+                })}
+                {(dayEvents.length + dayTasks.length) > (compact?2:3) && (
+                  <div style={{ fontSize: 10, color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontUI }}>
+                    +{dayEvents.length + dayTasks.length - (compact?2:3)} más
+                  </div>
+                )}
+                {dayTasks.length > 0 && (
+                  <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
+                    {dayTasks.slice(0,5).map((t,k) => (
+                      <div key={k} title={t.title} style={{
+                        width: 5, height: 5, borderRadius: 3,
+                        background: PRIORITY_META[t.priority].dot,
+                      }}/>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+};
+
+const WeekView = ({ rangeStart, expanded, subjectById, now, compact }) => {
+  const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 – 20:00
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(rangeStart); d.setDate(d.getDate() + i); return d;
+  });
+
+  return (
+    <Card padding={0} style={{ overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)' }}>
+        <div style={{ borderBottom: `1px solid ${UP_TOKENS.line}`, background: UP_TOKENS.bgAlt }} />
+        {days.map((d, i) => {
+          const isToday = d.toDateString() === now.toDateString();
+          return (
+            <div key={i} style={{
+              padding: '10px 8px', textAlign: 'center',
+              borderBottom: `1px solid ${UP_TOKENS.line}`,
+              borderLeft: `1px solid ${UP_TOKENS.lineSoft}`,
+              background: UP_TOKENS.bgAlt,
+            }}>
+              <div style={{
+                fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase',
+                color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontUI, fontWeight: 600,
+              }}>{WEEKDAYS_ES[i]}</div>
+              <div style={{
+                fontSize: 20, fontFamily: UP_TOKENS.fontDisplay, marginTop: 2,
+                color: isToday ? '#FBFAF5' : UP_TOKENS.ink,
+                background: isToday ? UP_TOKENS.accent : 'transparent',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 28, height: 28, borderRadius: '50%', fontWeight: 500,
+              }}>{d.getDate()}</div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)' }}>
+        {/* hour labels */}
+        {hours.map((h, i) => (
+          <React.Fragment key={h}>
+            <div style={{
+              height: compact ? 38 : 52, padding: '2px 8px', textAlign: 'right',
+              fontSize: 10, color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontMono,
+              borderTop: `1px solid ${UP_TOKENS.lineSoft}`,
+            }}>{String(h).padStart(2,'0')}:00</div>
+            {days.map((d, j) => (
+              <div key={j} style={{
+                borderTop: `1px solid ${UP_TOKENS.lineSoft}`,
+                borderLeft: `1px solid ${UP_TOKENS.lineSoft}`,
+              }} />
+            ))}
+          </React.Fragment>
+        ))}
+        {/* events overlay */}
+        {expanded.map((e, i) => {
+          const dayIdx = Math.floor((e._start - rangeStart) / 86400000);
+          if (dayIdx < 0 || dayIdx > 6) return null;
+          const startMin = e._start.getHours() * 60 + e._start.getMinutes();
+          const durMin = Math.max(30, (e._end - e._start) / 60000);
+          const hourHeight = compact ? 38 : 52;
+          const top = ((startMin - 7*60) / 60) * hourHeight;
+          const height = (durMin / 60) * hourHeight - 2;
+          if (top < 0 || top > hours.length * hourHeight) return null;
+          const subject = subjectById[e.subjectId];
+          const isSchedule = !!e.recurrenceRule && !e.isExam;
+          return (
+            <div key={i} style={{
+              position: 'absolute',
+              left: `calc(52px + ${dayIdx} * ((100% - 52px) / 7) + 2px)`,
+              width: `calc((100% - 52px) / 7 - 4px)`,
+              top, height,
+              background: e.isExam ? UP_TOKENS.danger
+                : isSchedule ? (subject?.color + '33' || UP_TOKENS.accentSoft)
+                : (subject?.color + '66' || UP_TOKENS.accentSoft),
+              border: isSchedule ? `1.5px dashed ${subject?.color || UP_TOKENS.accent}` : 'none',
+              borderLeft: isSchedule ? `3px solid ${subject?.color || UP_TOKENS.accent}`
+                : `3px solid ${e.isExam ? UP_TOKENS.danger : subject?.color || UP_TOKENS.accent}`,
+              borderRadius: UP_TOKENS.r1,
+              padding: '4px 6px', overflow: 'hidden',
+              boxShadow: isSchedule ? 'none' : UP_TOKENS.shadowSm,
+            }}>
+              <div style={{
+                fontSize: 11, fontWeight: 600,
+                color: e.isExam ? '#fff' : UP_TOKENS.ink,
+                fontFamily: UP_TOKENS.fontUI,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {e.isExam && '◆ '}{isSchedule && '◌ '}{e.title}
+              </div>
+              <div style={{
+                fontSize: 10, marginTop: 1,
+                color: e.isExam ? 'rgba(255,255,255,0.85)' : UP_TOKENS.inkSoft,
+                fontFamily: UP_TOKENS.fontMono,
+              }}>
+                {formatDate(e._start.toISOString(), { timeOnly: true })}–{formatDate(e._end.toISOString(), { timeOnly: true })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+};
+
+const DayView = ({ anchor, expanded, subjectById, now }) => {
+  const dayEvents = expanded.filter(e => e._start.toDateString() === anchor.toDateString());
+  return (
+    <Card padding={24}>
+      {dayEvents.length === 0 && <EmptyState text="Nada en la agenda. ¿Un café?" />}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {dayEvents.map((e,i) => (
+          <TodayEventRow key={i} event={{
+            ...e, startTime: e._start.toISOString(), endTime: e._end.toISOString()
+          }} subject={subjectById[e.subjectId]} />
+        ))}
+      </div>
+    </Card>
+  );
+};
+
+Object.assign(window, { Calendar });
+
+</script>
+
+<script type="text/babel">
+// Tasks — Table view (inline editing, filters) + Tree view (subtasks recursive)
+
+const TasksTable = ({ state, dispatch, compact }) => {
+  const { tasks, subjects, now } = state;
+  const subjectById = Object.fromEntries(subjects.map(s => [s.id, s]));
+  const [filterSubject, setFilterSubject] = React.useState('all');
+  const [filterStatus, setFilterStatus] = React.useState('all');
+  const [filterPriority, setFilterPriority] = React.useState('all');
+  const [search, setSearch] = React.useState('');
+  const [editingCell, setEditingCell] = React.useState(null); // {id, field}
+
+  const filtered = tasks.filter(t => {
+    if (filterSubject !== 'all' && t.subjectId !== filterSubject && !(filterSubject === 'general' && !t.subjectId)) return false;
+    if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+    if (filterPriority !== 'all' && t.priority !== filterPriority) return false;
+    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  }).sort((a,b) => {
+    const ao = PRIORITY_META[a.priority].order, bo = PRIORITY_META[b.priority].order;
+    if (ao !== bo) return bo - ao;
+    if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+    return 0;
+  });
+
+  return (
+    <div style={{ padding: compact ? 16 : 32, maxWidth: 1240, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <SectionTitle size={compact ? 'md' : 'lg'}>Todas las tareas</SectionTitle>
+          <div style={{ fontSize: 13, color: UP_TOKENS.inkSoft, fontFamily: UP_TOKENS.fontUI, marginTop: 2 }}>
+            {filtered.length} de {tasks.length} tareas
+          </div>
+        </div>
+        <Button variant="primary" size="sm" icon="plus"
+          onClick={() => dispatch({ type: 'ADD_TASK_PROMPT' })}>Nueva tarea</Button>
+      </div>
+
+      {/* Filters */}
+      <Card padding={compact ? 12 : 16} style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <TextInput icon="search" placeholder="Buscar…" value={search} onChange={setSearch}
+            size="sm" style={{ minWidth: 180, flex: compact ? 1 : 'none' }}/>
+          <FilterSelect label="Materia" value={filterSubject} onChange={setFilterSubject}
+            options={[{v:'all',l:'Todas'},{v:'general',l:'General'},...subjects.filter(s=>s.isActive).map(s=>({v:s.id,l:s.name}))]} />
+          <FilterSelect label="Estado" value={filterStatus} onChange={setFilterStatus}
+            options={[{v:'all',l:'Todos'},...Object.entries(STATUS_META).map(([k,v])=>({v:k,l:v.label}))]} />
+          <FilterSelect label="Prioridad" value={filterPriority} onChange={setFilterPriority}
+            options={[{v:'all',l:'Todas'},...Object.entries(PRIORITY_META).reverse().map(([k,v])=>({v:k,l:v.label}))]} />
+        </div>
+      </Card>
+
+      <Card padding={0} style={{ overflow: 'hidden' }}>
+        {!compact && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '36px 2fr 1.1fr 0.9fr 1fr 0.9fr 36px',
+            gap: 0,
+            padding: '10px 16px',
+            background: UP_TOKENS.bgAlt,
+            borderBottom: `1px solid ${UP_TOKENS.line}`,
+            fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase',
+            color: UP_TOKENS.inkMuted, fontWeight: 600, fontFamily: UP_TOKENS.fontUI,
+          }}>
+            <div/><div>Tarea</div><div>Materia</div><div>Prioridad</div><div>Fecha límite</div><div>Estado</div><div/>
+          </div>
+        )}
+        {filtered.map(t => (
+          <TaskRow key={t.id} task={t} subject={subjectById[t.subjectId]}
+            now={now} dispatch={dispatch} subjects={subjects}
+            editingCell={editingCell} setEditingCell={setEditingCell} compact={compact}/>
+        ))}
+        {filtered.length === 0 && (
+          <div style={{ padding: 40, textAlign: 'center', color: UP_TOKENS.inkMuted,
+            fontFamily: UP_TOKENS.fontDisplay, fontStyle: 'italic', fontSize: 15 }}>
+            Ninguna tarea coincide con los filtros.
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+const FilterSelect = ({ label, value, onChange, options }) => {
+  const [open, setOpen] = React.useState(false);
+  const current = options.find(o => o.v === value);
+  return (
+    <div style={{ position: 'relative' }}>
+      <button onClick={() => setOpen(!open)} style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '6px 12px', fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+        background: UP_TOKENS.surfaceAlt, border: `1px solid transparent`,
+        borderRadius: UP_TOKENS.rFull, color: UP_TOKENS.ink, cursor: 'pointer',
+      }}>
+        <span style={{ color: UP_TOKENS.inkMuted }}>{label}:</span>
+        <strong style={{ fontWeight: 500 }}>{current?.l}</strong>
+        <Icon name="chevDown" size={12} />
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }}/>
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 20,
+            background: UP_TOKENS.surface, border: `1px solid ${UP_TOKENS.line}`,
+            borderRadius: UP_TOKENS.r2, boxShadow: UP_TOKENS.shadowMd,
+            padding: 4, minWidth: 160,
+          }}>
+            {options.map(o => (
+              <button key={o.v} onClick={() => { onChange(o.v); setOpen(false); }} style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '7px 10px', fontSize: 13, fontFamily: UP_TOKENS.fontUI,
+                background: value === o.v ? UP_TOKENS.accentSoft : 'transparent',
+                color: value === o.v ? UP_TOKENS.accentInk : UP_TOKENS.ink,
+                border: 'none', borderRadius: UP_TOKENS.r1, cursor: 'pointer',
+                fontWeight: value === o.v ? 600 : 400,
+              }}>{o.l}</button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+const TaskRow = ({ task, subject, now, dispatch, subjects, editingCell, setEditingCell, compact }) => {
+  const isCompleted = task.status === 'COMPLETED';
+  const isOverdue = task.dueDate && !isCompleted && daysBetween(task.dueDate, now) < 0;
+  const [hover, setHover] = React.useState(false);
+
+  if (compact) {
+    return (
+      <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+        style={{
+          padding: '12px 14px', borderBottom: `1px solid ${UP_TOKENS.lineSoft}`,
+          background: hover ? UP_TOKENS.bgAlt : 'transparent',
+        }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <Checkbox checked={isCompleted}
+            onChange={() => dispatch({ type: 'TOGGLE_TASK', id: task.id })} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 14, color: UP_TOKENS.ink, fontFamily: UP_TOKENS.fontUI, fontWeight: 500,
+              textDecoration: isCompleted ? 'line-through' : 'none',
+              opacity: isCompleted ? 0.5 : 1,
+            }}>{task.title}</div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+              <SubjectChip subject={subject} compact />
+              <PriorityChip value={task.priority} compact />
+              {task.dueDate && (
+                <span style={{
+                  fontSize: 11, fontFamily: UP_TOKENS.fontUI,
+                  color: isOverdue ? UP_TOKENS.danger : UP_TOKENS.inkSoft,
+                  padding: '2px 8px', background: isOverdue ? UP_TOKENS.dangerSoft : UP_TOKENS.surfaceAlt,
+                  borderRadius: UP_TOKENS.rFull, fontWeight: isOverdue ? 600 : 400,
+                }}>{relativeLabel(task.dueDate, now)}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '36px 2fr 1.1fr 0.9fr 1fr 0.9fr 36px',
+        padding: '12px 16px', alignItems: 'center',
+        borderBottom: `1px solid ${UP_TOKENS.lineSoft}`,
+        background: hover ? UP_TOKENS.bgAlt : 'transparent',
+        opacity: isCompleted ? 0.55 : 1,
+      }}>
+      <Checkbox checked={isCompleted}
+        onChange={() => dispatch({ type: 'TOGGLE_TASK', id: task.id })} />
+      <div>
+        <div style={{
+          fontSize: 14, fontFamily: UP_TOKENS.fontUI, color: UP_TOKENS.ink, fontWeight: 500,
+          textDecoration: isCompleted ? 'line-through' : 'none',
+        }}>{task.title}</div>
+        {task.observations && (
+          <div style={{
+            fontSize: 12, color: UP_TOKENS.inkSoft, fontFamily: UP_TOKENS.fontDisplay,
+            fontStyle: 'italic', marginTop: 2, maxWidth: 460,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>↳ {task.observations}</div>
+        )}
+      </div>
+      <div><SubjectChip subject={subject} compact /></div>
+      <div>
+        <InlineCycler value={task.priority} options={['NONE','LOW','MEDIUM','HIGH','URGENT']}
+          render={v => <PriorityChip value={v} compact />}
+          onChange={v => dispatch({ type: 'UPDATE_TASK', id: task.id, changes: { priority: v } })} />
+      </div>
+      <div style={{
+        fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+        color: isOverdue ? UP_TOKENS.danger : UP_TOKENS.inkSoft,
+        fontWeight: isOverdue ? 600 : 400,
+      }}>
+        {task.dueDate ? (
+          <>
+            {relativeLabel(task.dueDate, now)}
+            <span style={{ opacity: 0.6, marginLeft: 6, fontFamily: UP_TOKENS.fontMono }}>
+              {formatDate(task.dueDate, { timeOnly: true })}
+            </span>
+          </>
+        ) : <span style={{ color: UP_TOKENS.inkMuted }}>—</span>}
+      </div>
+      <div>
+        <InlineCycler value={task.status} options={['NOT_STARTED','IN_PROGRESS','COMPLETED','CANCELLED']}
+          render={v => <StatusChip value={v} compact />}
+          onChange={v => dispatch({ type: 'UPDATE_TASK', id: task.id, changes: { status: v, completedAt: v==='COMPLETED' ? new Date().toISOString() : null } })} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        {hover && <IconButton icon="trash" size={28} onClick={() => dispatch({ type: 'DELETE_TASK', id: task.id })} />}
+      </div>
+    </div>
+  );
+};
+
+// Cycle thru values on click (poor-man's inline editor)
+const InlineCycler = ({ value, options, render, onChange }) => {
+  const next = () => {
+    const idx = options.indexOf(value);
+    onChange(options[(idx + 1) % options.length]);
+  };
+  return (
+    <div onClick={next} style={{ cursor: 'pointer', display: 'inline-block' }} title="Clic para cambiar">
+      {render(value)}
+    </div>
+  );
+};
+
+// ─── Tree View ────────────────────────────────────────────────
+const TasksTree = ({ state, dispatch, compact }) => {
+  const { tasks, subjects, now } = state;
+  const subjectById = Object.fromEntries(subjects.map(s => [s.id, s]));
+
+  const rootTasks = tasks.filter(t => !t.parentTaskId);
+  const childrenOf = (id) => tasks.filter(t => t.parentTaskId === id);
+
+  // Group root tasks by subject
+  const bySubject = {};
+  rootTasks.forEach(t => {
+    const key = t.subjectId || '__general__';
+    bySubject[key] = bySubject[key] || [];
+    bySubject[key].push(t);
+  });
+
+  return (
+    <div style={{ padding: compact ? 16 : 32, maxWidth: 980, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <SectionTitle size={compact ? 'md' : 'lg'}>Tareas por materia</SectionTitle>
+          <div style={{ fontSize: 13, color: UP_TOKENS.inkSoft, fontFamily: UP_TOKENS.fontUI, marginTop: 2 }}>
+            Vista de árbol con subtareas
+          </div>
+        </div>
+        <Button variant="primary" size="sm" icon="plus">Nueva tarea</Button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {subjects.filter(s => s.isActive).map(s => {
+          const items = bySubject[s.id] || [];
+          if (items.length === 0) return null;
+          return (
+            <SubjectGroup key={s.id} subject={s} items={items} childrenOf={childrenOf}
+              now={now} dispatch={dispatch} compact={compact} />
+          );
+        })}
+        {bySubject['__general__'] && bySubject['__general__'].length > 0 && (
+          <SubjectGroup subject={{ name: 'General', color: UP_TOKENS.inkMuted }}
+            items={bySubject['__general__']} childrenOf={childrenOf}
+            now={now} dispatch={dispatch} compact={compact} general />
+        )}
+      </div>
+    </div>
+  );
+};
+
+const SubjectGroup = ({ subject, items, childrenOf, now, dispatch, compact, general }) => {
+  return (
+    <Card padding={compact ? 16 : 22}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        <div style={{
+          width: 10, height: 10, borderRadius: 5,
+          background: subject.color,
+        }}/>
+        <div style={{
+          fontFamily: UP_TOKENS.fontDisplay, fontSize: 20, fontWeight: 400,
+          color: UP_TOKENS.ink, letterSpacing: -0.2,
+          fontStyle: general ? 'italic' : 'normal',
+        }}>{subject.name}</div>
+        <div style={{
+          fontSize: 12, color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontUI,
+          marginLeft: 'auto',
+        }}>
+          {items.length} {items.length === 1 ? 'tarea' : 'tareas'}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {items.map(t => (
+          <TaskTreeNode key={t.id} task={t} childrenOf={childrenOf} depth={0}
+            now={now} dispatch={dispatch} />
+        ))}
+      </div>
+    </Card>
+  );
+};
+
+const TaskTreeNode = ({ task, childrenOf, depth, now, dispatch }) => {
+  const kids = childrenOf(task.id);
+  const [expanded, setExpanded] = React.useState(true);
+  const isCompleted = task.status === 'COMPLETED';
+  const isOverdue = task.dueDate && !isCompleted && daysBetween(task.dueDate, now) < 0;
+
+  return (
+    <div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '9px 6px',
+        paddingLeft: depth * 28 + 6,
+        borderRadius: UP_TOKENS.r1,
+        opacity: isCompleted ? 0.55 : 1,
+      }}>
+        {kids.length > 0 ? (
+          <button onClick={() => setExpanded(!expanded)} style={{
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            padding: 0, color: UP_TOKENS.inkSoft, display: 'flex',
+          }}>
+            <Icon name={expanded ? 'chevDown' : 'chevRight'} size={14} />
+          </button>
+        ) : (
+          <div style={{ width: 14 }} />
+        )}
+        <Checkbox checked={isCompleted} size={18}
+          onChange={() => dispatch({ type: 'TOGGLE_TASK', id: task.id })} />
+        <div style={{
+          flex: 1, fontSize: 14, fontFamily: UP_TOKENS.fontUI,
+          color: UP_TOKENS.ink, fontWeight: depth === 0 ? 500 : 400,
+          textDecoration: isCompleted ? 'line-through' : 'none',
+        }}>
+          {task.title}
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {task.priority !== 'NONE' && <PriorityChip value={task.priority} compact />}
+          {task.dueDate && (
+            <span style={{
+              fontSize: 11, fontFamily: UP_TOKENS.fontUI,
+              color: isOverdue ? UP_TOKENS.danger : UP_TOKENS.inkSoft,
+              fontWeight: isOverdue ? 600 : 400,
+            }}>
+              {relativeLabel(task.dueDate, now)}
+            </span>
+          )}
+        </div>
+      </div>
+      {expanded && kids.length > 0 && (
+        <div style={{
+          marginLeft: depth * 28 + 20,
+          borderLeft: `1px dashed ${UP_TOKENS.line}`,
+          paddingLeft: 2,
+        }}>
+          {kids.map(k => (
+            <TaskTreeNode key={k.id} task={k} childrenOf={childrenOf} depth={depth + 1}
+              now={now} dispatch={dispatch} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+Object.assign(window, { TasksTable, TasksTree });
+
+</script>
+
+<script type="text/babel">
+// Subjects — CRUD with color + active/inactive
+
+const SUBJECT_COLORS = [
+  '#D98880','#85C1A1','#E8B86D','#A7C5E8','#C9A7E8','#B5B9AE',
+  '#D4B08C','#9DC9B5','#E5A89B','#B3B8E5','#D8CF9B','#A7D4C4',
+];
+
+const Subjects = ({ state, dispatch, navigate, compact }) => {
+  const { subjects, tasks, events } = state;
+  const [filter, setFilter] = React.useState('active');
+  const [editingId, setEditingId] = React.useState(null);
+  const [adding, setAdding] = React.useState(false);
+
+  const filtered = subjects.filter(s => filter === 'active' ? s.isActive : filter === 'inactive' ? !s.isActive : true);
+
+  return (
+    <div style={{ padding: compact ? 16 : 32, maxWidth: 1080, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <SectionTitle size={compact ? 'md' : 'lg'}>Mis materias</SectionTitle>
+          <div style={{ fontSize: 13, color: UP_TOKENS.inkSoft, fontFamily: UP_TOKENS.fontUI, marginTop: 2 }}>
+            Cuatrimestre abril — agosto 2026
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{
+            display: 'flex', background: UP_TOKENS.surfaceAlt, padding: 3,
+            borderRadius: UP_TOKENS.rFull, gap: 2,
+          }}>
+            {[['active','Activas'],['inactive','Anteriores'],['all','Todas']].map(([v,l]) => (
+              <button key={v} onClick={() => setFilter(v)} style={{
+                padding: '6px 12px', fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+                background: filter === v ? UP_TOKENS.surface : 'transparent',
+                color: filter === v ? UP_TOKENS.ink : UP_TOKENS.inkSoft,
+                border: 'none', borderRadius: UP_TOKENS.rFull, cursor: 'pointer',
+                fontWeight: 500, boxShadow: filter === v ? UP_TOKENS.shadowSm : 'none',
+              }}>{l}</button>
+            ))}
+          </div>
+          <Button variant="primary" size="sm" icon="plus" onClick={() => setAdding(true)}>Nueva</Button>
+        </div>
+      </div>
+
+      <div style={{
+        display: 'grid', gap: compact ? 12 : 16,
+        gridTemplateColumns: compact ? '1fr' : 'repeat(auto-fill, minmax(260px, 1fr))',
+      }}>
+        {adding && <SubjectEditor onSave={(data) => { dispatch({ type: 'ADD_SUBJECT', ...data }); setAdding(false); }}
+          onCancel={() => setAdding(false)} />}
+        {filtered.map(s => {
+          const subjectTasks = tasks.filter(t => t.subjectId === s.id);
+          const active = subjectTasks.filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELLED').length;
+          const completed = subjectTasks.filter(t => t.status === 'COMPLETED').length;
+          const nextExam = events.filter(e => e.isExam && e.subjectId === s.id && new Date(e.startTime) >= state.now)
+            .sort((a,b) => new Date(a.startTime) - new Date(b.startTime))[0];
+          if (editingId === s.id) {
+            return (
+              <SubjectEditor key={s.id} subject={s}
+                onSave={(data) => { dispatch({ type: 'UPDATE_SUBJECT', id: s.id, changes: data }); setEditingId(null); }}
+                onCancel={() => setEditingId(null)}
+                onDelete={() => { dispatch({ type: 'DELETE_SUBJECT', id: s.id }); setEditingId(null); }}/>
+            );
+          }
+          return (
+            <SubjectCard key={s.id} subject={s} active={active} completed={completed} nextExam={nextExam}
+              now={state.now} onEdit={() => setEditingId(s.id)}
+              onToggleActive={() => dispatch({ type: 'UPDATE_SUBJECT', id: s.id, changes: { isActive: !s.isActive } })} />
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const SubjectCard = ({ subject, active, completed, nextExam, now, onEdit, onToggleActive }) => {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{
+      background: UP_TOKENS.surface,
+      border: `1px solid ${UP_TOKENS.line}`,
+      borderRadius: UP_TOKENS.r3, padding: 20,
+      position: 'relative', overflow: 'hidden',
+      opacity: subject.isActive ? 1 : 0.65,
+      transition: 'all 150ms',
+      boxShadow: hover ? UP_TOKENS.shadowMd : 'none',
+    }}>
+      {/* Color strip */}
+      <div style={{
+        position: 'absolute', left: 0, top: 0, bottom: 0, width: 5,
+        background: subject.color,
+      }}/>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: UP_TOKENS.fontDisplay, fontSize: 22, fontWeight: 400,
+            color: UP_TOKENS.ink, letterSpacing: -0.2,
+          }}>{subject.name}</div>
+          <div style={{
+            fontSize: 11, fontFamily: UP_TOKENS.fontMono, color: UP_TOKENS.inkMuted,
+            marginTop: 2, letterSpacing: 0.5,
+          }}>{subject.code}</div>
+        </div>
+        <IconButton icon="pencil" size={28} onClick={onEdit} />
+      </div>
+
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
+        padding: '10px 0', borderTop: `1px dashed ${UP_TOKENS.lineSoft}`,
+      }}>
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontUI, fontWeight: 600 }}>Activas</div>
+          <div style={{ fontSize: 22, fontFamily: UP_TOKENS.fontDisplay, color: UP_TOKENS.ink }}>{active}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontUI, fontWeight: 600 }}>Completadas</div>
+          <div style={{ fontSize: 22, fontFamily: UP_TOKENS.fontDisplay, color: UP_TOKENS.ink }}>{completed}</div>
+        </div>
+      </div>
+
+      {subject.schedule && subject.schedule.length > 0 && (
+        <div style={{
+          marginTop: 4, marginBottom: 8,
+          padding: '8px 0', borderTop: `1px dashed ${UP_TOKENS.lineSoft}`,
+        }}>
+          <div style={{ fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontUI, fontWeight: 600, marginBottom: 6 }}>
+            Horario
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {subject.schedule.map((slot, i) => {
+              const dayLbl = { MO:'Lun', TU:'Mar', WE:'Mié', TH:'Jue', FR:'Vie', SA:'Sáb', SU:'Dom' }[slot.day] || slot.day;
+              return (
+                <div key={i} style={{
+                  fontSize: 12, fontFamily: UP_TOKENS.fontUI, color: UP_TOKENS.inkSoft,
+                  display: 'flex', alignItems: 'baseline', gap: 6,
+                }}>
+                  <span style={{ fontWeight: 600, color: UP_TOKENS.ink, minWidth: 28 }}>{dayLbl}</span>
+                  <span style={{ fontFamily: UP_TOKENS.fontMono, fontSize: 11, color: UP_TOKENS.inkMuted }}>
+                    {slot.start}–{slot.end}
+                  </span>
+                  {slot.label && <span style={{ fontSize: 11, color: UP_TOKENS.inkMuted, fontStyle: 'italic' }}>· {slot.label}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {nextExam && (
+        <div style={{
+          marginTop: 8, padding: '10px 12px',
+          background: UP_TOKENS.dangerSoft,
+          borderRadius: UP_TOKENS.r2,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8,
+            color: UP_TOKENS.danger, fontWeight: 700, fontFamily: UP_TOKENS.fontUI,
+          }}>◆ Parcial</div>
+          <div style={{ flex: 1, fontSize: 12, color: UP_TOKENS.ink, fontFamily: UP_TOKENS.fontUI }}>
+            {relativeLabel(nextExam.startTime, now)}
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 12, display: 'flex', gap: 6 }}>
+        <button onClick={onToggleActive} style={{
+          fontSize: 11, fontFamily: UP_TOKENS.fontUI, padding: '4px 10px',
+          background: 'transparent', border: `1px solid ${UP_TOKENS.line}`,
+          borderRadius: UP_TOKENS.rFull, cursor: 'pointer', color: UP_TOKENS.inkSoft,
+        }}>{subject.isActive ? 'Archivar' : 'Reactivar'}</button>
+      </div>
+    </div>
+  );
+};
+
+const WEEKDAY_OPTIONS = [
+  { key: 'MO', label: 'Lun' },
+  { key: 'TU', label: 'Mar' },
+  { key: 'WE', label: 'Mié' },
+  { key: 'TH', label: 'Jue' },
+  { key: 'FR', label: 'Vie' },
+  { key: 'SA', label: 'Sáb' },
+  { key: 'SU', label: 'Dom' },
+];
+
+const ScheduleEditor = ({ schedule, onChange, subjectColor }) => {
+  const add = () => onChange([...(schedule || []), { day: 'MO', start: '08:00', end: '09:30', label: '' }]);
+  const remove = (i) => onChange(schedule.filter((_, idx) => idx !== i));
+  const update = (i, patch) => onChange(schedule.map((s, idx) => idx === i ? { ...s, ...patch } : s));
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <Label style={{ marginBottom: 8 }}>Días y horarios</Label>
+      <div style={{
+        fontSize: 11, color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontUI,
+        marginBottom: 10, lineHeight: 1.5,
+      }}>
+        Agregá cuántos bloques necesites. Cada bloque se agenda automáticamente en el calendario semana a semana.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {(schedule || []).map((slot, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: UP_TOKENS.bg,
+            border: `1px solid ${UP_TOKENS.lineSoft}`,
+            borderLeft: `3px solid ${subjectColor}`,
+            borderRadius: UP_TOKENS.r2, padding: '8px 10px',
+          }}>
+            <select value={slot.day} onChange={e => update(i, { day: e.target.value })} style={{
+              fontSize: 12, fontFamily: UP_TOKENS.fontUI, padding: '5px 8px',
+              background: UP_TOKENS.surface, border: `1px solid ${UP_TOKENS.line}`,
+              borderRadius: UP_TOKENS.r1, color: UP_TOKENS.ink, cursor: 'pointer',
+            }}>
+              {WEEKDAY_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </select>
+            <input type="time" value={slot.start} onChange={e => update(i, { start: e.target.value })} style={{
+              fontSize: 12, fontFamily: UP_TOKENS.fontMono, padding: '5px 6px',
+              background: UP_TOKENS.surface, border: `1px solid ${UP_TOKENS.line}`,
+              borderRadius: UP_TOKENS.r1, color: UP_TOKENS.ink, width: 90,
+            }}/>
+            <span style={{ color: UP_TOKENS.inkMuted, fontSize: 12 }}>–</span>
+            <input type="time" value={slot.end} onChange={e => update(i, { end: e.target.value })} style={{
+              fontSize: 12, fontFamily: UP_TOKENS.fontMono, padding: '5px 6px',
+              background: UP_TOKENS.surface, border: `1px solid ${UP_TOKENS.line}`,
+              borderRadius: UP_TOKENS.r1, color: UP_TOKENS.ink, width: 90,
+            }}/>
+            <input type="text" value={slot.label || ''} onChange={e => update(i, { label: e.target.value })}
+              placeholder="Etiqueta (opcional)" style={{
+              flex: 1, minWidth: 60,
+              fontSize: 12, fontFamily: UP_TOKENS.fontUI, padding: '5px 8px',
+              background: UP_TOKENS.surface, border: `1px solid ${UP_TOKENS.line}`,
+              borderRadius: UP_TOKENS.r1, color: UP_TOKENS.ink, outline: 'none',
+            }}/>
+            <button onClick={() => remove(i)} title="Eliminar bloque" style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: UP_TOKENS.inkMuted, fontSize: 16, padding: '2px 6px', lineHeight: 1,
+            }}>×</button>
+          </div>
+        ))}
+        {(!schedule || schedule.length === 0) && (
+          <div style={{
+            fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+            color: UP_TOKENS.inkMuted, fontStyle: 'italic',
+            padding: '6px 2px',
+          }}>Sin horarios aún.</div>
+        )}
+      </div>
+      <button onClick={add} style={{
+        marginTop: 8, fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+        padding: '6px 12px', cursor: 'pointer',
+        background: UP_TOKENS.surfaceAlt, border: `1px dashed ${UP_TOKENS.line}`,
+        borderRadius: UP_TOKENS.rFull, color: UP_TOKENS.inkSoft, fontWeight: 500,
+      }}>+ Agregar bloque horario</button>
+    </div>
+  );
+};
+
+const SubjectEditor = ({ subject, onSave, onCancel, onDelete }) => {
+  const [name, setName] = React.useState(subject?.name || '');
+  const [code, setCode] = React.useState(subject?.code || '');
+  const [color, setColor] = React.useState(subject?.color || SUBJECT_COLORS[0]);
+  const [isActive, setIsActive] = React.useState(subject?.isActive !== false);
+  const [schedule, setSchedule] = React.useState(subject?.schedule || []);
+
+  return (
+    <div style={{
+      background: UP_TOKENS.surface,
+      border: `2px solid ${UP_TOKENS.accent}`,
+      borderRadius: UP_TOKENS.r3, padding: 20,
+      gridColumn: '1 / -1',
+    }}>
+      <TextInput value={name} onChange={setName} placeholder="Nombre de la materia" autoFocus
+        style={{ background: UP_TOKENS.bg, marginBottom: 10 }}/>
+      <TextInput value={code} onChange={setCode} placeholder="Código (opcional)" size="sm"
+        style={{ background: UP_TOKENS.bg, marginBottom: 14 }}/>
+      <Label style={{ marginBottom: 8 }}>Color</Label>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+        {SUBJECT_COLORS.map(c => (
+          <button key={c} onClick={() => setColor(c)} style={{
+            width: 26, height: 26, borderRadius: '50%', background: c, cursor: 'pointer',
+            border: color === c ? `2px solid ${UP_TOKENS.ink}` : `2px solid transparent`,
+            outline: 'none',
+          }}/>
+        ))}
+      </div>
+      <ScheduleEditor schedule={schedule} onChange={setSchedule} subjectColor={color} />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontFamily: UP_TOKENS.fontUI, marginBottom: 16, cursor: 'pointer' }}>
+        <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
+        Materia activa (cuatrimestre en curso)
+      </label>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        {onDelete && <Button variant="danger" size="sm" onClick={onDelete}>Eliminar</Button>}
+        <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
+        <Button variant="primary" size="sm" onClick={() => onSave({ name, code, color, isActive, schedule })} disabled={!name.trim()}>
+          Guardar
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+Object.assign(window, { Subjects });
+
+</script>
+
+<script type="text/babel">
+// Vida Personal — listas tipo checklist, sin fechas ni calendario
+
+const PersonalLife = ({ state, dispatch, compact }) => {
+  const { personalLists } = state;
+  const [addingList, setAddingList] = React.useState(false);
+  const [newListName, setNewListName] = React.useState('');
+  const [editingListId, setEditingListId] = React.useState(null);
+
+  const submitNewList = () => {
+    const name = newListName.trim();
+    if (!name) return;
+    dispatch({ type: 'ADD_PERSONAL_LIST', name });
+    setNewListName('');
+    setAddingList(false);
+  };
+
+  return (
+    <div style={{ padding: compact ? 16 : 32, maxWidth: 1080, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <SectionTitle size={compact ? 'md' : 'lg'}>Vida personal</SectionTitle>
+          <div style={{ fontSize: 13, color: UP_TOKENS.inkSoft, fontFamily: UP_TOKENS.fontUI, marginTop: 2 }}>
+            Listas livianas para todo lo que no va en la agenda.
+          </div>
+        </div>
+        <Button variant="primary" size="sm" icon="plus" onClick={() => setAddingList(true)}>
+          Nueva lista
+        </Button>
+      </div>
+
+      {addingList && (
+        <div style={{
+          background: UP_TOKENS.surface,
+          border: `2px solid ${UP_TOKENS.accent}`,
+          borderRadius: UP_TOKENS.r3,
+          padding: 16, marginBottom: 16,
+          display: 'flex', gap: 8, alignItems: 'center',
+        }}>
+          <input
+            autoFocus
+            value={newListName}
+            onChange={e => setNewListName(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') submitNewList();
+              if (e.key === 'Escape') { setAddingList(false); setNewListName(''); }
+            }}
+            placeholder='Nombre de la lista — "Fin de semana", "Súper", "Casa"…'
+            style={{
+              flex: 1, fontSize: 16, fontFamily: UP_TOKENS.fontDisplay,
+              background: UP_TOKENS.bg, border: `1px solid ${UP_TOKENS.line}`,
+              borderRadius: UP_TOKENS.r1, padding: '10px 12px',
+              color: UP_TOKENS.ink, outline: 'none',
+            }}
+          />
+          <Button variant="ghost" size="sm" onClick={() => { setAddingList(false); setNewListName(''); }}>
+            Cancelar
+          </Button>
+          <Button variant="primary" size="sm" onClick={submitNewList} disabled={!newListName.trim()}>
+            Crear
+          </Button>
+        </div>
+      )}
+
+      {personalLists.length === 0 && !addingList && (
+        <div style={{
+          textAlign: 'center', padding: '48px 20px',
+          fontFamily: UP_TOKENS.fontUI, color: UP_TOKENS.inkMuted,
+        }}>
+          <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.3 }}>◌</div>
+          <div style={{ fontSize: 14, marginBottom: 4 }}>Sin listas todavía.</div>
+          <div style={{ fontSize: 12 }}>Creá tu primera lista para arrancar.</div>
+        </div>
+      )}
+
+      <div style={{
+        display: 'grid', gap: compact ? 12 : 16,
+        gridTemplateColumns: compact ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))',
+        alignItems: 'start',
+      }}>
+        {personalLists.map(list => (
+          <PersonalListCard
+            key={list.id}
+            list={list}
+            compact={compact}
+            editing={editingListId === list.id}
+            onStartEditing={() => setEditingListId(list.id)}
+            onStopEditing={() => setEditingListId(null)}
+            dispatch={dispatch}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const PersonalListCard = ({ list, compact, editing, onStartEditing, onStopEditing, dispatch }) => {
+  const [newItem, setNewItem] = React.useState('');
+  const [nameDraft, setNameDraft] = React.useState(list.name);
+  const inputRef = React.useRef(null);
+
+  const totalItems = list.tasks.length;
+  const doneItems = list.tasks.filter(t => t.done).length;
+  const allDone = totalItems > 0 && doneItems === totalItems;
+
+  React.useEffect(() => { setNameDraft(list.name); }, [list.name]);
+
+  const addItem = () => {
+    const text = newItem.trim();
+    if (!text) return;
+    dispatch({ type: 'ADD_PERSONAL_ITEM', listId: list.id, text });
+    setNewItem('');
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const saveName = () => {
+    const n = nameDraft.trim();
+    if (n && n !== list.name) dispatch({ type: 'RENAME_PERSONAL_LIST', listId: list.id, name: n });
+    onStopEditing();
+  };
+
+  return (
+    <div style={{
+      background: UP_TOKENS.surface,
+      border: `1px solid ${UP_TOKENS.line}`,
+      borderRadius: UP_TOKENS.r3,
+      padding: 18,
+      opacity: allDone ? 0.72 : 1,
+      transition: 'opacity 200ms',
+      position: 'relative',
+    }}>
+      {/* header: name + progress + menu */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {editing ? (
+            <input
+              autoFocus
+              value={nameDraft}
+              onChange={e => setNameDraft(e.target.value)}
+              onBlur={saveName}
+              onKeyDown={e => {
+                if (e.key === 'Enter') saveName();
+                if (e.key === 'Escape') { setNameDraft(list.name); onStopEditing(); }
+              }}
+              style={{
+                width: '100%',
+                fontFamily: UP_TOKENS.fontDisplay, fontSize: 22,
+                fontWeight: 400, color: UP_TOKENS.ink, letterSpacing: -0.2,
+                background: UP_TOKENS.bg, border: `1px solid ${UP_TOKENS.line}`,
+                borderRadius: UP_TOKENS.r1, padding: '4px 8px',
+                outline: 'none',
+              }}
+            />
+          ) : (
+            <div onClick={onStartEditing} style={{
+              fontFamily: UP_TOKENS.fontDisplay, fontSize: 22, fontWeight: 400,
+              color: UP_TOKENS.ink, letterSpacing: -0.2, cursor: 'text',
+              textDecoration: allDone ? 'line-through' : 'none',
+              textDecorationColor: UP_TOKENS.inkMuted,
+              textDecorationThickness: '1.5px',
+              wordBreak: 'break-word',
+            }}>
+              {list.name}
+            </div>
+          )}
+          <div style={{
+            fontSize: 11, letterSpacing: 0.5, color: UP_TOKENS.inkMuted,
+            fontFamily: UP_TOKENS.fontMono, marginTop: 4,
+          }}>
+            {totalItems === 0 ? 'vacía' : `${doneItems} / ${totalItems}`}
+            {allDone && <span style={{ color: UP_TOKENS.accent, marginLeft: 8, fontWeight: 600, fontFamily: UP_TOKENS.fontUI, letterSpacing: 0.8 }}>✓ LISTO</span>}
+          </div>
+        </div>
+        <IconButton icon="trash" size={28}
+          title="Eliminar lista"
+          onClick={() => {
+            if (window.confirm(`¿Eliminar la lista "${list.name}"?`)) {
+              dispatch({ type: 'DELETE_PERSONAL_LIST', listId: list.id });
+            }
+          }}/>
+      </div>
+
+      {/* progress bar */}
+      {totalItems > 0 && (
+        <div style={{
+          height: 3, background: UP_TOKENS.lineSoft, borderRadius: 2,
+          marginBottom: 12, overflow: 'hidden',
+        }}>
+          <div style={{
+            width: `${(doneItems / totalItems) * 100}%`,
+            height: '100%',
+            background: allDone ? UP_TOKENS.accent : UP_TOKENS.accentSoft,
+            transition: 'width 200ms',
+          }}/>
+        </div>
+      )}
+
+      {/* items */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8 }}>
+        {list.tasks.map(t => (
+          <PersonalItem key={t.id} item={t} listId={list.id} dispatch={dispatch} />
+        ))}
+      </div>
+
+      {/* add item */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '6px 4px',
+        borderTop: list.tasks.length > 0 ? `1px dashed ${UP_TOKENS.lineSoft}` : 'none',
+        paddingTop: list.tasks.length > 0 ? 10 : 4,
+      }}>
+        <div style={{
+          width: 16, height: 16, borderRadius: 4,
+          border: `1.5px dashed ${UP_TOKENS.line}`,
+          flexShrink: 0,
+        }}/>
+        <input
+          ref={inputRef}
+          value={newItem}
+          onChange={e => setNewItem(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') addItem();
+          }}
+          placeholder="Agregar ítem…"
+          style={{
+            flex: 1, fontSize: 14, fontFamily: UP_TOKENS.fontUI,
+            background: 'transparent', border: 'none',
+            color: UP_TOKENS.ink, outline: 'none',
+            padding: '4px 0',
+          }}
+        />
+        {newItem.trim() && (
+          <button onClick={addItem} style={{
+            fontSize: 11, fontFamily: UP_TOKENS.fontUI,
+            background: UP_TOKENS.accent, color: '#FBFAF5',
+            border: 'none', padding: '4px 10px', borderRadius: UP_TOKENS.rFull,
+            cursor: 'pointer', fontWeight: 500,
+          }}>+ Add</button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const PersonalItem = ({ item, listId, dispatch }) => {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: 10,
+        padding: '6px 4px',
+        borderRadius: UP_TOKENS.r1,
+        background: hover ? UP_TOKENS.bgAlt : 'transparent',
+        transition: 'background 120ms',
+      }}>
+      <button
+        onClick={() => dispatch({ type: 'TOGGLE_PERSONAL_ITEM', listId, itemId: item.id })}
+        style={{
+          width: 18, height: 18, flexShrink: 0,
+          borderRadius: 4,
+          border: `1.5px solid ${item.done ? UP_TOKENS.accent : UP_TOKENS.line}`,
+          background: item.done ? UP_TOKENS.accent : 'transparent',
+          cursor: 'pointer', padding: 0,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          marginTop: 1,
+        }}>
+        {item.done && (
+          <svg width="12" height="12" viewBox="0 0 20 20" fill="none"
+               stroke="#FBFAF5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 10.5l4 4 8-9"/>
+          </svg>
+        )}
+      </button>
+      <div style={{
+        flex: 1,
+        fontSize: 14, fontFamily: UP_TOKENS.fontUI,
+        color: item.done ? UP_TOKENS.inkMuted : UP_TOKENS.ink,
+        textDecoration: item.done ? 'line-through' : 'none',
+        textDecorationColor: UP_TOKENS.inkMuted,
+        textDecorationThickness: '1px',
+        wordBreak: 'break-word', lineHeight: 1.4,
+        cursor: 'pointer',
+      }}
+      onClick={() => dispatch({ type: 'TOGGLE_PERSONAL_ITEM', listId, itemId: item.id })}>
+        {item.text}
+      </div>
+      {hover && (
+        <button onClick={() => dispatch({ type: 'DELETE_PERSONAL_ITEM', listId, itemId: item.id })}
+          style={{
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: UP_TOKENS.inkMuted, fontSize: 14, padding: '0 4px', lineHeight: 1,
+          }} title="Eliminar">×</button>
+      )}
+    </div>
+  );
+};
+
+Object.assign(window, { PersonalLife });
+
+</script>
+
+<script type="text/babel">
+// Login + Offline banner + Sync indicator + Navigation
+
+const LoginScreen = ({ onLogin, compact }) => (
+  <div style={{
+    width: '100%', height: '100%', background: UP_TOKENS.bg,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: 24, fontFamily: UP_TOKENS.fontUI,
+    backgroundImage: `radial-gradient(circle at 20% 20%, ${UP_TOKENS.accentSoft} 0%, transparent 50%), radial-gradient(circle at 80% 80%, ${UP_TOKENS.accentDim}33 0%, transparent 50%)`,
+  }}>
+    <div style={{
+      background: UP_TOKENS.surface, borderRadius: UP_TOKENS.r4,
+      padding: compact ? 28 : 44, maxWidth: 400, width: '100%',
+      border: `1px solid ${UP_TOKENS.line}`, boxShadow: UP_TOKENS.shadowLg,
+      textAlign: 'center',
+    }}>
+      <div style={{
+        width: 64, height: 64, margin: '0 auto 18px',
+        borderRadius: 18, background: UP_TOKENS.accent,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: UP_TOKENS.fontDisplay, fontSize: 34, color: '#FBFAF5',
+        fontWeight: 500,
+      }}>U</div>
+      <SectionTitle size="lg" style={{ marginBottom: 8 }}>UniPlanner</SectionTitle>
+      <div style={{
+        fontSize: 14, color: UP_TOKENS.inkSoft, fontFamily: UP_TOKENS.fontDisplay,
+        fontStyle: 'italic', marginBottom: 28, lineHeight: 1.5,
+      }}>
+        Tu espacio tranquilo para organizar<br/>la universidad y un poco más.
+      </div>
+      <button onClick={onLogin} style={{
+        width: '100%', padding: '12px 18px',
+        background: UP_TOKENS.surface, border: `1px solid ${UP_TOKENS.line}`,
+        borderRadius: UP_TOKENS.rFull, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+        fontSize: 14, fontFamily: UP_TOKENS.fontUI, color: UP_TOKENS.ink,
+        fontWeight: 500,
+      }}>
+        <Icon name="google" size={18} strokeWidth={0}/>
+        Continuar con Google
+      </button>
+      <div style={{ fontSize: 11, color: UP_TOKENS.inkMuted, marginTop: 20, lineHeight: 1.5, fontFamily: UP_TOKENS.fontUI }}>
+        Tus datos se guardan en tu Google Drive.<br/>
+        UniPlanner no tiene servidores propios.
+      </div>
+    </div>
+  </div>
+);
+
+// Offline / sync banner
+const SyncBanner = ({ status, onRetry, onDismiss }) => {
+  if (!status || status === 'synced') return null;
+  const configs = {
+    offline: {
+      bg: UP_TOKENS.warnSoft, fg: '#7A5A1F',
+      icon: 'wifiOff',
+      text: 'Sin conexión. Tus cambios se guardan localmente y se sincronizarán cuando vuelvas.',
+    },
+    syncing: {
+      bg: UP_TOKENS.infoSoft, fg: '#2F4E7A',
+      icon: 'sync',
+      text: 'Sincronizando con Google Drive…',
+    },
+    'sync-failed': {
+      bg: UP_TOKENS.dangerSoft, fg: '#7A2F2F',
+      icon: 'wifiOff',
+      text: 'No se pudo sincronizar. Tus datos están guardados localmente.',
+      action: 'Reintentar',
+    },
+  };
+  const c = configs[status];
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '10px 18px',
+      background: c.bg, color: c.fg,
+      fontSize: 13, fontFamily: UP_TOKENS.fontUI,
+      borderBottom: `1px solid ${UP_TOKENS.line}`,
+    }}>
+      <Icon name={c.icon} size={16} />
+      <div style={{ flex: 1 }}>{c.text}</div>
+      {c.action && (
+        <button onClick={onRetry} style={{
+          fontSize: 12, padding: '4px 12px',
+          background: 'transparent', border: `1px solid currentColor`,
+          borderRadius: UP_TOKENS.rFull, cursor: 'pointer',
+          color: 'inherit', fontFamily: UP_TOKENS.fontUI, fontWeight: 500,
+        }}>{c.action}</button>
+      )}
+      {onDismiss && (
+        <button onClick={onDismiss} style={{
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          color: 'inherit', padding: 4, opacity: 0.7,
+        }}><Icon name="x" size={14} /></button>
+      )}
+    </div>
+  );
+};
+
+// Desktop sidebar nav
+const Sidebar = ({ active, onNavigate, syncStatus, onLogout }) => {
+  const items = [
+    { id: 'dashboard',    label: 'Inicio',       icon: 'home' },
+    { id: 'calendar',     label: 'Agenda',       icon: 'calendar' },
+    { id: 'tasks-table',  label: 'Tareas',       icon: 'list' },
+    { id: 'tasks-tree',   label: 'Por materia',  icon: 'tree' },
+    { id: 'subjects',     label: 'Materias',     icon: 'book' },
+    { id: 'personal',     label: 'Vida personal',icon: 'heart' },
+  ];
+  return (
+    <div style={{
+      width: 232, background: UP_TOKENS.bg,
+      borderRight: `1px solid ${UP_TOKENS.line}`,
+      display: 'flex', flexDirection: 'column',
+      padding: '22px 14px',
+      flexShrink: 0, height: '100%',
+    }}>
+      {/* Logo */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 8px', marginBottom: 26 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 10, background: UP_TOKENS.accent,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: UP_TOKENS.fontDisplay, fontSize: 18, color: '#FBFAF5', fontWeight: 500,
+        }}>U</div>
+        <div>
+          <div style={{ fontFamily: UP_TOKENS.fontDisplay, fontSize: 18, fontWeight: 500, color: UP_TOKENS.ink, letterSpacing: -0.2 }}>UniPlanner</div>
+          <div style={{ fontSize: 10, color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontUI, letterSpacing: 0.4 }}>v2.0 · personal</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {items.map(it => {
+          const isActive = active === it.id;
+          return (
+            <button key={it.id} onClick={() => onNavigate(it.id)} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 12px', fontSize: 14, fontFamily: UP_TOKENS.fontUI,
+              background: isActive ? UP_TOKENS.surface : 'transparent',
+              color: isActive ? UP_TOKENS.ink : UP_TOKENS.inkSoft,
+              fontWeight: isActive ? 600 : 500,
+              border: 'none', borderRadius: UP_TOKENS.r2,
+              cursor: 'pointer', textAlign: 'left',
+              boxShadow: isActive ? UP_TOKENS.shadowSm : 'none',
+            }}>
+              <Icon name={it.icon} size={18} stroke={isActive ? UP_TOKENS.accent : UP_TOKENS.inkSoft} />
+              {it.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ flex: 1 }}/>
+
+      {/* Sync status */}
+      <div style={{
+        padding: '10px 12px', marginBottom: 10,
+        background: UP_TOKENS.surface, borderRadius: UP_TOKENS.r2,
+        fontSize: 11, fontFamily: UP_TOKENS.fontUI,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <Icon name={syncStatus === 'offline' ? 'wifiOff' : 'sync'} size={14}
+          stroke={syncStatus === 'synced' ? UP_TOKENS.accent : UP_TOKENS.inkSoft} />
+        <div style={{ flex: 1, color: UP_TOKENS.inkSoft }}>
+          {syncStatus === 'synced' && 'Sincronizado'}
+          {syncStatus === 'syncing' && 'Sincronizando…'}
+          {syncStatus === 'offline' && 'Sin conexión'}
+          {syncStatus === 'sync-failed' && 'Fallo sync'}
+        </div>
+        <div style={{ fontSize: 10, color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontMono }}>9:42</div>
+      </div>
+
+      {/* User */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+        background: UP_TOKENS.surface, borderRadius: UP_TOKENS.r2,
+      }}>
+        <Avatar name="Paula" size={30} bg={UP_TOKENS.accent}/>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, color: UP_TOKENS.ink, fontFamily: UP_TOKENS.fontUI, fontWeight: 500 }}>Paula</div>
+          <div style={{ fontSize: 11, color: UP_TOKENS.inkMuted, fontFamily: UP_TOKENS.fontUI,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>paula@gmail.com</div>
+        </div>
+        <IconButton icon="dots" size={26} onClick={onLogout}/>
+      </div>
+    </div>
+  );
+};
+
+// Mobile bottom nav
+const BottomNav = ({ active, onNavigate }) => {
+  const items = [
+    { id: 'dashboard',    label: 'Inicio',     icon: 'home' },
+    { id: 'calendar',     label: 'Agenda',     icon: 'calendar' },
+    { id: 'tasks-table',  label: 'Tareas',     icon: 'list' },
+    { id: 'subjects',     label: 'Materias',   icon: 'book' },
+    { id: 'personal',     label: 'Personal',   icon: 'heart' },
+  ];
+  return (
+    <div style={{
+      display: 'flex', background: UP_TOKENS.surface,
+      borderTop: `1px solid ${UP_TOKENS.line}`,
+      padding: '6px 4px',
+    }}>
+      {items.map(it => {
+        const isActive = active === it.id || (it.id === 'tasks-table' && active === 'tasks-tree');
+        return (
+          <button key={it.id} onClick={() => onNavigate(it.id)} style={{
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+            padding: '6px 0', background: 'transparent', border: 'none', cursor: 'pointer',
+            color: isActive ? UP_TOKENS.accent : UP_TOKENS.inkMuted,
+            fontFamily: UP_TOKENS.fontUI,
+          }}>
+            <Icon name={it.icon} size={20} stroke={isActive ? UP_TOKENS.accent : UP_TOKENS.inkMuted} strokeWidth={isActive ? 2 : 1.6}/>
+            <span style={{ fontSize: 10, fontWeight: isActive ? 600 : 500, letterSpacing: 0.2 }}>{it.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// Mobile top bar
+const MobileTopBar = ({ active, syncStatus }) => {
+  const titles = {
+    dashboard: 'Hola, Paula',
+    calendar: 'Agenda',
+    'tasks-table': 'Tareas',
+    'tasks-tree': 'Tareas',
+    subjects: 'Materias',
+    personal: 'Vida personal',
+  };
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', padding: '12px 18px',
+      background: UP_TOKENS.bg, borderBottom: `1px solid ${UP_TOKENS.line}`,
+      gap: 12,
+    }}>
+      <div style={{
+        fontFamily: UP_TOKENS.fontDisplay, fontSize: 20, fontWeight: 500,
+        color: UP_TOKENS.ink, flex: 1, letterSpacing: -0.2,
+      }}>{titles[active]}</div>
+      <div style={{
+        fontSize: 10, color: syncStatus === 'offline' ? UP_TOKENS.warn : UP_TOKENS.accent,
+        fontFamily: UP_TOKENS.fontUI, fontWeight: 600, letterSpacing: 0.5,
+        display: 'flex', alignItems: 'center', gap: 4,
+      }}>
+        <Icon name={syncStatus === 'offline' ? 'wifiOff' : 'wifi'} size={12}/>
+        {syncStatus === 'offline' ? 'OFFLINE' : 'SYNC'}
+      </div>
+      <Avatar name="Paula" size={30} bg={UP_TOKENS.accent}/>
+    </div>
+  );
+};
+
+// Mobile mini tab switcher for tasks (list / tree)
+const TasksTabSwitcher = ({ active, onChange }) => (
+  <div style={{
+    display: 'flex', padding: '0 16px 8px', gap: 6,
+    background: UP_TOKENS.bg,
+  }}>
+    {[['tasks-table','Tabla','list'],['tasks-tree','Árbol','tree']].map(([id,label,icon]) => (
+      <button key={id} onClick={() => onChange(id)} style={{
+        padding: '6px 12px', fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+        background: active === id ? UP_TOKENS.accentSoft : 'transparent',
+        color: active === id ? UP_TOKENS.accentInk : UP_TOKENS.inkSoft,
+        border: 'none', borderRadius: UP_TOKENS.rFull, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500,
+      }}>
+        <Icon name={icon} size={14}/>
+        {label}
+      </button>
+    ))}
+  </div>
+);
+
+Object.assign(window, { LoginScreen, SyncBanner, Sidebar, BottomNav, MobileTopBar, TasksTabSwitcher });
+
+</script>
+
+<script type="text/babel">
+// Tweaks panel — floating control for accent, density, theme, banner
+
+const TweaksPanel = ({ tweaks, setTweaks, onClose }) => {
+  const set = (k, v) => setTweaks(prev => ({ ...prev, [k]: v }));
+  return (
+    <div style={{
+      position: 'fixed', bottom: 20, right: 20, zIndex: 9999,
+      width: 288, background: UP_TOKENS.surface,
+      border: `1px solid ${UP_TOKENS.line}`, borderRadius: UP_TOKENS.r3,
+      boxShadow: UP_TOKENS.shadowLg, padding: 18,
+      fontFamily: UP_TOKENS.fontUI,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 14 }}>
+        <div style={{
+          fontFamily: UP_TOKENS.fontDisplay, fontSize: 18,
+          color: UP_TOKENS.ink, flex: 1, letterSpacing: -0.2,
+        }}>Tweaks</div>
+        <IconButton icon="x" size={24} onClick={onClose}/>
+      </div>
+
+      <Label style={{ marginBottom: 8 }}>Acento</Label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {[
+          ['verde', 'oklch(0.55 0.12 145)'],
+          ['índigo', 'oklch(0.55 0.15 260)'],
+          ['terracota', 'oklch(0.62 0.13 50)'],
+          ['violeta', 'oklch(0.55 0.15 300)'],
+        ].map(([name, val]) => (
+          <button key={name} onClick={() => set('accent', val)} title={name} style={{
+            width: 30, height: 30, borderRadius: '50%', background: val,
+            border: tweaks.accent === val ? `2px solid ${UP_TOKENS.ink}` : '2px solid transparent',
+            cursor: 'pointer', outline: 'none',
+          }}/>
+        ))}
+      </div>
+
+      <Label style={{ marginBottom: 8 }}>Densidad</Label>
+      <div style={{
+        display: 'flex', background: UP_TOKENS.surfaceAlt, padding: 3,
+        borderRadius: UP_TOKENS.rFull, gap: 2, marginBottom: 16,
+      }}>
+        {['cómoda','compacta'].map(d => (
+          <button key={d} onClick={() => set('density', d)} style={{
+            flex: 1, padding: '6px 10px', fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+            background: tweaks.density === d ? UP_TOKENS.surface : 'transparent',
+            color: tweaks.density === d ? UP_TOKENS.ink : UP_TOKENS.inkSoft,
+            border: 'none', borderRadius: UP_TOKENS.rFull, cursor: 'pointer',
+            fontWeight: 500, textTransform: 'capitalize',
+            boxShadow: tweaks.density === d ? UP_TOKENS.shadowSm : 'none',
+          }}>{d}</button>
+        ))}
+      </div>
+
+      <Label style={{ marginBottom: 8 }}>Vista calendario por defecto</Label>
+      <div style={{
+        display: 'flex', background: UP_TOKENS.surfaceAlt, padding: 3,
+        borderRadius: UP_TOKENS.rFull, gap: 2, marginBottom: 16,
+      }}>
+        {[['day','Día'],['week','Semana'],['month','Mes']].map(([v,l]) => (
+          <button key={v} onClick={() => set('calView', v)} style={{
+            flex: 1, padding: '6px 10px', fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+            background: tweaks.calView === v ? UP_TOKENS.surface : 'transparent',
+            color: tweaks.calView === v ? UP_TOKENS.ink : UP_TOKENS.inkSoft,
+            border: 'none', borderRadius: UP_TOKENS.rFull, cursor: 'pointer',
+            fontWeight: 500,
+            boxShadow: tweaks.calView === v ? UP_TOKENS.shadowSm : 'none',
+          }}>{l}</button>
+        ))}
+      </div>
+
+      <Label style={{ marginBottom: 8 }}>Estado de sincronización</Label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+        {[['synced','Ok'],['syncing','Sync…'],['offline','Offline'],['sync-failed','Falla']].map(([v,l]) => (
+          <button key={v} onClick={() => set('syncStatus', v)} style={{
+            padding: '4px 10px', fontSize: 11, fontFamily: UP_TOKENS.fontUI,
+            background: tweaks.syncStatus === v ? UP_TOKENS.accent : UP_TOKENS.surfaceAlt,
+            color: tweaks.syncStatus === v ? '#FBFAF5' : UP_TOKENS.inkSoft,
+            border: 'none', borderRadius: UP_TOKENS.rFull, cursor: 'pointer', fontWeight: 500,
+          }}>{l}</button>
+        ))}
+      </div>
+
+      <Label style={{ marginBottom: 8 }}>Vista inicial</Label>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {[['both','Ambas'],['mobile','Móvil'],['desktop','Desktop'],['login','Login']].map(([v,l]) => (
+          <button key={v} onClick={() => set('layout', v)} style={{
+            padding: '4px 10px', fontSize: 11, fontFamily: UP_TOKENS.fontUI,
+            background: tweaks.layout === v ? UP_TOKENS.accent : UP_TOKENS.surfaceAlt,
+            color: tweaks.layout === v ? '#FBFAF5' : UP_TOKENS.inkSoft,
+            border: 'none', borderRadius: UP_TOKENS.rFull, cursor: 'pointer', fontWeight: 500,
+          }}>{l}</button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+Object.assign(window, { TweaksPanel });
+
+</script>
+
+<script type="text/babel">
+
+// ─── App state ─────────────────────────────────────────────────
+const initialState = {
+  subjects: SUBJECTS,
+  tasks: TASKS,
+  events: EVENTS,
+  quickNotes: QUICK_NOTES,
+  personalLists: PERSONAL_LISTS,
+  now: TODAY,
+};
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case 'TOGGLE_TASK': {
+      return {
+        ...state,
+        tasks: state.tasks.map(t => t.id === action.id
+          ? { ...t,
+              status: t.status === 'COMPLETED' ? 'NOT_STARTED' : 'COMPLETED',
+              completedAt: t.status === 'COMPLETED' ? null : new Date().toISOString(),
+            }
+          : t)
+      };
+    }
+    case 'UPDATE_TASK':
+      return { ...state, tasks: state.tasks.map(t => t.id === action.id ? { ...t, ...action.changes } : t) };
+    case 'DELETE_TASK':
+      return { ...state, tasks: state.tasks.filter(t => t.id !== action.id && t.parentTaskId !== action.id) };
+    case 'ADD_TASK_PROMPT': {
+      const title = window.prompt('Nueva tarea:');
+      if (!title || !title.trim()) return state;
+      const newT = {
+        id: 't-' + Math.random().toString(36).slice(2, 9),
+        subjectId: null, parentTaskId: null, title: title.trim(),
+        priority: 'MEDIUM', status: 'NOT_STARTED',
+        dueDate: null, observations: null, createdAt: new Date().toISOString(),
+      };
+      return { ...state, tasks: [newT, ...state.tasks] };
+    }
+    case 'ADD_NOTE': {
+      const n = { id: 'n-' + Math.random().toString(36).slice(2,9), text: action.text, createdAt: new Date().toISOString() };
+      return { ...state, quickNotes: [n, ...state.quickNotes] };
+    }
+    case 'DELETE_NOTE':
+      return { ...state, quickNotes: state.quickNotes.filter(n => n.id !== action.id) };
+    case 'ADD_SUBJECT': {
+      const s = { id: 'sub-' + Math.random().toString(36).slice(2,8), name: action.name, code: action.code, color: action.color, isActive: action.isActive, schedule: action.schedule || [] };
+      return { ...state, subjects: [...state.subjects, s] };
+    }
+    case 'UPDATE_SUBJECT':
+      return { ...state, subjects: state.subjects.map(s => s.id === action.id ? { ...s, ...action.changes } : s) };
+    case 'DELETE_SUBJECT':
+      return { ...state, subjects: state.subjects.filter(s => s.id !== action.id) };
+    case 'ADD_PERSONAL_LIST': {
+      const list = { id: 'pl-' + Math.random().toString(36).slice(2,8), name: action.name, tasks: [] };
+      return { ...state, personalLists: [list, ...state.personalLists] };
+    }
+    case 'RENAME_PERSONAL_LIST':
+      return { ...state, personalLists: state.personalLists.map(l => l.id === action.listId ? { ...l, name: action.name } : l) };
+    case 'DELETE_PERSONAL_LIST':
+      return { ...state, personalLists: state.personalLists.filter(l => l.id !== action.listId) };
+    case 'ADD_PERSONAL_ITEM': {
+      const item = { id: 'pi-' + Math.random().toString(36).slice(2,8), text: action.text, done: false };
+      return { ...state, personalLists: state.personalLists.map(l => l.id === action.listId ? { ...l, tasks: [...l.tasks, item] } : l) };
+    }
+    case 'TOGGLE_PERSONAL_ITEM':
+      return { ...state, personalLists: state.personalLists.map(l =>
+        l.id === action.listId ? { ...l, tasks: l.tasks.map(t => t.id === action.itemId ? { ...t, done: !t.done } : t) } : l
+      )};
+    case 'DELETE_PERSONAL_ITEM':
+      return { ...state, personalLists: state.personalLists.map(l =>
+        l.id === action.listId ? { ...l, tasks: l.tasks.filter(t => t.id !== action.itemId) } : l
+      )};
+    default:
+      return state;
+  }
+};
+
+// ─── Main app ──────────────────────────────────────────────────
+const UniPlannerApp = ({ compact, state, dispatch, route, setRoute, syncStatus, onLogin, loggedIn }) => {
+  if (!loggedIn) return <LoginScreen onLogin={onLogin} compact={compact} />;
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: UP_TOKENS.bg }}>
+      {compact ? (
+        <>
+          <MobileTopBar active={route} syncStatus={syncStatus} />
+          <SyncBanner status={syncStatus === 'synced' ? null : syncStatus} />
+          {(route === 'tasks-table' || route === 'tasks-tree') && (
+            <TasksTabSwitcher active={route} onChange={setRoute} />
+          )}
+          <div className="up-scroll" style={{ flex: 1, overflow: 'auto' }}>
+            {route === 'dashboard'    && <Dashboard state={state} dispatch={dispatch} navigate={setRoute} compact />}
+            {route === 'calendar'     && <Calendar state={state} dispatch={dispatch} compact />}
+            {route === 'tasks-table'  && <TasksTable state={state} dispatch={dispatch} compact />}
+            {route === 'tasks-tree'   && <TasksTree state={state} dispatch={dispatch} compact />}
+            {route === 'subjects'     && <Subjects state={state} dispatch={dispatch} navigate={setRoute} compact />}
+            {route === 'personal'     && <PersonalLife state={state} dispatch={dispatch} compact />}
+          </div>
+          <BottomNav active={route} onNavigate={setRoute} />
+        </>
+      ) : (
+        <div style={{ display: 'flex', height: '100%' }}>
+          <Sidebar active={route} onNavigate={setRoute} syncStatus={syncStatus} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: UP_TOKENS.bg }}>
+            <SyncBanner status={syncStatus === 'synced' ? null : syncStatus} />
+            {(route === 'tasks-table' || route === 'tasks-tree') && (
+              <div style={{ padding: '8px 32px 0', background: UP_TOKENS.bg }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[['tasks-table','Tabla','list'],['tasks-tree','Por materia','tree']].map(([id,label,icon]) => (
+                    <button key={id} onClick={() => setRoute(id)} style={{
+                      padding: '6px 14px', fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+                      background: route === id ? UP_TOKENS.accentSoft : 'transparent',
+                      color: route === id ? UP_TOKENS.accentInk : UP_TOKENS.inkSoft,
+                      border: 'none', borderRadius: UP_TOKENS.rFull, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500,
+                    }}>
+                      <Icon name={icon} size={14}/>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="up-scroll" style={{ flex: 1, overflow: 'auto' }}>
+              {route === 'dashboard'    && <Dashboard state={state} dispatch={dispatch} navigate={setRoute} />}
+              {route === 'calendar'     && <Calendar state={state} dispatch={dispatch} />}
+              {route === 'tasks-table'  && <TasksTable state={state} dispatch={dispatch} />}
+              {route === 'tasks-tree'   && <TasksTree state={state} dispatch={dispatch} />}
+              {route === 'subjects'     && <Subjects state={state} dispatch={dispatch} navigate={setRoute} />}
+              {route === 'personal'     && <PersonalLife state={state} dispatch={dispatch} />}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Root (stage with mobile + desktop side by side) ───────────
+const Root = () => {
+  const [state, dispatch] = React.useReducer(reducer, initialState);
+  const [desktopRoute, setDesktopRoute] = React.useState(() => localStorage.getItem('up_desktop_route') || 'dashboard');
+  const [mobileRoute,  setMobileRoute]  = React.useState(() => localStorage.getItem('up_mobile_route')  || 'dashboard');
+  const [desktopLoggedIn, setDesktopLoggedIn] = React.useState(true);
+  const [mobileLoggedIn,  setMobileLoggedIn]  = React.useState(true);
+
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "accent": "oklch(0.55 0.12 145)",
+    "density": "cómoda",
+    "calView": "week",
+    "syncStatus": "synced",
+    "layout": "both"
+  }/*EDITMODE-END*/;
+
+  const [tweaks, setTweaks] = React.useState(TWEAK_DEFAULTS);
+  const [tweaksOpen, setTweaksOpen] = React.useState(false);
+
+  // Tweak protocol
+  React.useEffect(() => {
+    const onMsg = (ev) => {
+      if (ev.data?.type === '__activate_edit_mode') setTweaksOpen(true);
+      if (ev.data?.type === '__deactivate_edit_mode') setTweaksOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  // Persist routes
+  React.useEffect(() => localStorage.setItem('up_desktop_route', desktopRoute), [desktopRoute]);
+  React.useEffect(() => localStorage.setItem('up_mobile_route', mobileRoute), [mobileRoute]);
+
+  // Apply accent via CSS var override
+  React.useEffect(() => {
+    if (tweaks.accent !== UP_TOKENS.accent) {
+      UP_TOKENS.accent = tweaks.accent;
+      const lighter = tweaks.accent.replace('0.55 0.12', '0.94 0.03')
+                                   .replace('0.55 0.15', '0.94 0.03')
+                                   .replace('0.62 0.13', '0.94 0.03');
+      const darker = tweaks.accent.replace('0.55 0.12', '0.32 0.08')
+                                  .replace('0.55 0.15', '0.32 0.08')
+                                  .replace('0.62 0.13', '0.32 0.08');
+      const dim = tweaks.accent.replace('0.55 0.12', '0.80 0.06')
+                               .replace('0.55 0.15', '0.80 0.06')
+                               .replace('0.62 0.13', '0.80 0.06');
+      UP_TOKENS.accentSoft = lighter;
+      UP_TOKENS.accentInk = darker;
+      UP_TOKENS.accentDim = dim;
+      // Force re-render
+      setLayoutKey(k => k + 1);
+    }
+  }, [tweaks.accent]);
+
+  // sync cal view with tweak
+  React.useEffect(() => { /* Calendar reads tweak? we pass via context via simpler: noop */ }, [tweaks.calView]);
+
+  const [layoutKey, setLayoutKey] = React.useState(0);
+
+  const layout = tweaks.layout || 'both';
+
+  // Scaled presentation
+  const stageRef = React.useRef();
+  const [scale, setScale] = React.useState(1);
+  React.useEffect(() => {
+    const fit = () => {
+      if (!stageRef.current) return;
+      const target = stageRef.current.firstChild;
+      if (!target) return;
+      const avail = window.innerWidth - 48;
+      const availH = window.innerHeight - 48;
+      const baseW = target.offsetWidth;
+      const baseH = target.offsetHeight;
+      const s = Math.min(avail / baseW, availH / baseH, 1);
+      setScale(s);
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    const id = setInterval(fit, 500);
+    return () => { window.removeEventListener('resize', fit); clearInterval(id); };
+  }, [layout, layoutKey]);
+
+  const showMobile = layout === 'both' || layout === 'mobile';
+  const showDesktop = layout === 'both' || layout === 'desktop';
+  const showLogin = layout === 'login';
+
+  return (
+    <div style={{
+      minHeight: '100vh', width: '100%',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24, fontFamily: UP_TOKENS.fontUI,
+    }}>
+      <div ref={stageRef} style={{
+        transform: `scale(${scale})`, transformOrigin: 'center',
+      }}>
+        <div key={layoutKey} style={{
+          display: 'flex', alignItems: 'center', gap: 36,
+          padding: '10px',
+        }}>
+          {showLogin && (
+            <div style={{
+              width: 420, height: 720,
+              background: UP_TOKENS.surface,
+              borderRadius: UP_TOKENS.r4,
+              boxShadow: UP_TOKENS.shadowLg,
+              overflow: 'hidden',
+              border: `1px solid ${UP_TOKENS.line}`,
+            }}>
+              <LoginScreen onLogin={()=>{}} compact={true} />
+            </div>
+          )}
+
+          {showDesktop && !showLogin && (
+            <div>
+              <div style={{
+                fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4,
+                color: UP_TOKENS.inkMuted, fontWeight: 600, marginBottom: 10,
+                fontFamily: UP_TOKENS.fontUI, paddingLeft: 4,
+              }}>◦ Desktop · navegador</div>
+              <div style={{
+                width: 1200, height: 780,
+                background: UP_TOKENS.surface,
+                borderRadius: 14, overflow: 'hidden',
+                boxShadow: '0 24px 80px rgba(44,42,38,0.14), 0 0 0 1px rgba(44,42,38,0.06)',
+              }}>
+                <div style={{
+                  height: 40, background: '#E4DED0',
+                  display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8,
+                  borderBottom: `1px solid ${UP_TOKENS.line}`,
+                }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#D98880' }}/>
+                    <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#E8B86D' }}/>
+                    <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#85C1A1' }}/>
+                  </div>
+                  <div style={{
+                    flex: 1, textAlign: 'center',
+                    fontSize: 12, fontFamily: UP_TOKENS.fontUI,
+                    color: UP_TOKENS.inkSoft,
+                  }}>
+                    <span style={{
+                      background: UP_TOKENS.bg, padding: '4px 16px', borderRadius: UP_TOKENS.rFull,
+                      border: `1px solid ${UP_TOKENS.lineSoft}`,
+                    }}>
+                      ⌂ uniplanner.app/{desktopRoute}
+                    </span>
+                  </div>
+                  <div style={{ width: 40 }}/>
+                </div>
+                <div style={{ height: 740 }}>
+                  <UniPlannerApp compact={false} state={state} dispatch={dispatch}
+                    route={desktopRoute} setRoute={setDesktopRoute}
+                    syncStatus={tweaks.syncStatus}
+                    onLogin={() => setDesktopLoggedIn(true)} loggedIn={desktopLoggedIn}/>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showMobile && !showLogin && (
+            <div>
+              <div style={{
+                fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4,
+                color: UP_TOKENS.inkMuted, fontWeight: 600, marginBottom: 10,
+                fontFamily: UP_TOKENS.fontUI, paddingLeft: 4,
+              }}>◦ Móvil · PWA</div>
+              <div style={{
+                width: 400, height: 780,
+                background: UP_TOKENS.bg,
+                borderRadius: 38,
+                boxShadow: '0 24px 80px rgba(44,42,38,0.18)',
+                border: `10px solid #2C2A26`,
+                overflow: 'hidden',
+                position: 'relative',
+              }}>
+                {/* Status bar */}
+                <div style={{
+                  height: 32, background: UP_TOKENS.bg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0 22px', fontSize: 13, fontFamily: UP_TOKENS.fontMono,
+                  color: UP_TOKENS.ink, fontWeight: 500,
+                }}>
+                  <span>9:42</span>
+                  <div style={{
+                    position: 'absolute', left: '50%', top: 10,
+                    transform: 'translateX(-50%)',
+                    width: 20, height: 20, borderRadius: '50%',
+                    background: '#1A1816',
+                  }}/>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <Icon name={tweaks.syncStatus === 'offline' ? 'wifiOff' : 'wifi'} size={14} strokeWidth={2}/>
+                    <span>87%</span>
+                  </div>
+                </div>
+                <div style={{ height: 'calc(100% - 32px)', background: UP_TOKENS.bg }}>
+                  <UniPlannerApp compact={true} state={state} dispatch={dispatch}
+                    route={mobileRoute} setRoute={setMobileRoute}
+                    syncStatus={tweaks.syncStatus}
+                    onLogin={() => setMobileLoggedIn(true)} loggedIn={mobileLoggedIn}/>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {tweaksOpen && <TweaksPanel tweaks={tweaks} setTweaks={setTweaks} onClose={() => {
+        setTweaksOpen(false);
+        window.parent.postMessage({ type: '__edit_mode_closed' }, '*');
+      }} />}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+
+</script>
+</body>
+</html>

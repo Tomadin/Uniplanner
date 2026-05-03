@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//tmp/**)",
+      "Bash(mkdir -p /tmp/design_files)",
+      "Bash(tar -xf /tmp/design_extracted.txt -C /tmp/design_files)",
+      "Bash(cat \"/tmp/design_files/uniplanner/project/src/PersonalLife.jsx\")",
+      "Bash(cat \"/tmp/design_files/uniplanner/project/src/Tweaks.jsx\")",
+      "Bash(node *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(git add *)"
+    ]
+  }
+}

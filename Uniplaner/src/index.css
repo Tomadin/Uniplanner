@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+/* ── Design tokens ────────────────────────────────────────────────────────── */
+:root {
+  --up-bg:          #F6F3EC;
+  --up-bg-alt:      #EFEAE0;
+  --up-surface:     #FBFAF5;
+  --up-surface-alt: #F1EDE3;
+  --up-ink:         #2C2A26;
+  --up-ink-soft:    #6B6860;
+  --up-ink-muted:   #9A9689;
+  --up-line:        #E4DED0;
+  --up-line-soft:   #EDE8DB;
+
+  --up-accent:      oklch(0.55 0.12 145);
+  --up-accent-dim:  oklch(0.80 0.06 145);
+  --up-accent-soft: oklch(0.94 0.03 145);
+  --up-accent-ink:  oklch(0.32 0.08 145);
+
+  --up-danger:      oklch(0.55 0.16 25);
+  --up-danger-soft: oklch(0.94 0.04 25);
+  --up-warn:        oklch(0.70 0.14 70);
+  --up-warn-soft:   oklch(0.95 0.05 70);
+  --up-info-soft:   oklch(0.94 0.03 240);
+
+  --up-shadow-sm: 0 1px 2px rgba(44,42,38,0.04), 0 1px 0 rgba(44,42,38,0.02);
+  --up-shadow-md: 0 2px 6px rgba(44,42,38,0.05), 0 8px 24px rgba(44,42,38,0.04);
+  --up-shadow-lg: 0 8px 24px rgba(44,42,38,0.08), 0 24px 60px rgba(44,42,38,0.06);
+
+  --up-font-display: "Fraunces", Georgia, serif;
+  --up-font-ui:      "Instrument Sans", system-ui, sans-serif;
+  --up-font-mono:    "JetBrains Mono", Menlo, monospace;
+
+  --up-r1: 10px;
+  --up-r2: 14px;
+  --up-r3: 20px;
+  --up-r4: 28px;
+  --up-r-full: 9999px;
+}
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--up-bg);
+  font-family: var(--up-font-ui);
+  color: var(--up-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 10% 0%, var(--up-accent-soft) 0%, transparent 35%),
+    radial-gradient(circle at 95% 90%, oklch(0.94 0.03 50) 0%, transparent 35%);
+  background-attachment: fixed;
+}
+
+button { font-family: inherit; }
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+.up-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.up-scroll::-webkit-scrollbar-thumb { background: var(--up-line); border-radius: 4px; }
+.up-scroll::-webkit-scrollbar-track { background: transparent; }
