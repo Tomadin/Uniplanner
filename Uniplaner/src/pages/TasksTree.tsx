@@ -12,27 +12,41 @@ import type { Task } from '../types';
 
 // ─── Formulario de nueva tarea ────────────────────────────────────────────────
 
-function AddTaskForm({ subjectId, onDone }: { subjectId: string | null; onDone: () => void }) {
-  const [title, setTitle] = useState('');
+function AddTaskForm({ subjectId, parentTaskId = null, onDone }: {
+  subjectId: string | null;
+  parentTaskId?: string | null;
+  onDone: () => void;
+}) {
+  const [title,   setTitle]   = useState('');
+  const [dueDate, setDueDate] = useState('');
   const add = useAddTask();
   const submit = () => {
     if (!title.trim()) return;
     add.mutate({
-      subjectId, parentTaskId: null, title: title.trim(),
+      subjectId, parentTaskId, title: title.trim(),
       description: null, priority: 'MEDIUM', status: 'NOT_STARTED',
-      dueDate: null, completedAt: null, observations: null,
+      dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+      completedAt: null, observations: null,
     });
     onDone();
   };
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 6px' }}>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 6px', flexWrap: 'wrap' }}>
       <input autoFocus value={title} onChange={e => setTitle(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onDone(); }}
         placeholder="Título de la tarea…"
         style={{
-          flex: 1, fontSize: 14, fontFamily: T.fontUI, background: T.surfaceAlt,
+          flex: 1, minWidth: 160, fontSize: 14, fontFamily: T.fontUI, background: T.surfaceAlt,
           border: `1px solid ${T.accent}`, borderRadius: T.r1,
           padding: '8px 12px', outline: 'none', color: T.ink,
+        }}
+      />
+      <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+        title="Fecha límite (opcional)"
+        style={{
+          fontSize: 13, fontFamily: T.fontUI, background: T.surfaceAlt,
+          border: `1px solid ${T.line}`, borderRadius: T.r1,
+          padding: '8px 10px', outline: 'none', color: dueDate ? T.ink : T.inkMuted,
         }}
       />
       <Button size="sm" variant="soft" onClick={submit} disabled={!title.trim()}>Agregar</Button>
@@ -118,16 +132,27 @@ function TaskNode({ task, depth, childrenOf, now }: {
 
       {addKid && (
         <div style={{ paddingLeft: (depth + 1) * 28 + 6 }}>
-          <AddTaskForm subjectId={task.subjectId} onDone={() => setAddKid(false)} />
+          <AddTaskForm subjectId={task.subjectId} parentTaskId={task.id} onDone={() => setAddKid(false)} />
         </div>
       )}
 
       {open && kids.length > 0 && (
-        <div style={{
-          marginLeft: depth * 28 + 26,
-          borderLeft: `1px dashed ${T.line}`, paddingLeft: 2,
-        }}>
-          {kids.map(k => <TaskNode key={k.id} task={k} depth={depth + 1} childrenOf={childrenOf} now={now} />)}
+        <div style={{ position: 'relative', marginLeft: depth * 28 + 32 }}>
+          <div style={{
+            position: 'absolute', left: 0, top: 0, bottom: 12,
+            borderLeft: `2px solid ${T.line}`,
+          }} />
+          {kids.map(k => (
+            <div key={k.id} style={{ position: 'relative' }}>
+              <div style={{
+                position: 'absolute', left: 0, top: 22,
+                width: 14, borderTop: `2px solid ${T.line}`,
+              }} />
+              <div style={{ marginLeft: 14 }}>
+                <TaskNode task={k} depth={depth + 1} childrenOf={childrenOf} now={now} />
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

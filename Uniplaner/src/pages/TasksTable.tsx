@@ -19,38 +19,40 @@ function InlineCycler<T extends string>({ value, cycle, render, onChange }: {
 function AddTaskForm({ onDone, subjects }: { onDone: () => void; subjects: Subject[] }) {
   const [title,     setTitle]     = useState('');
   const [subjectId, setSubjectId] = useState<string>('');
+  const [dueDate,   setDueDate]   = useState('');
   const add = useAddTask();
   const submit = () => {
     if (!title.trim()) return;
     add.mutate({
       title: title.trim(), subjectId: subjectId || null, parentTaskId: null,
       description: null, priority: 'MEDIUM', status: 'NOT_STARTED',
-      dueDate: null, completedAt: null, observations: null,
+      dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+      completedAt: null, observations: null,
     });
     onDone();
+  };
+  const INPUT: React.CSSProperties = {
+    fontSize: 13, fontFamily: T.fontUI, background: T.surface,
+    border: `1px solid ${T.line}`, borderRadius: T.r1, padding: '8px 10px',
+    color: T.ink, outline: 'none',
   };
   return (
     <div style={{
       display: 'flex', gap: 8, alignItems: 'center', padding: '12px 16px',
-      background: T.accentSoft, borderRadius: T.r2, marginBottom: 8,
+      background: T.accentSoft, borderRadius: T.r2, marginBottom: 8, flexWrap: 'wrap',
     }}>
       <input autoFocus value={title} onChange={e => setTitle(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onDone(); }}
         placeholder="Título de la nueva tarea…"
-        style={{
-          flex: 1, fontSize: 14, fontFamily: T.fontUI, background: T.surface,
-          border: `1px solid ${T.line}`, borderRadius: T.r1, padding: '8px 12px',
-          outline: 'none', color: T.ink,
-        }}
+        style={{ ...INPUT, flex: 1, minWidth: 200, fontSize: 14 }}
       />
-      <select value={subjectId} onChange={e => setSubjectId(e.target.value)} style={{
-        fontSize: 13, fontFamily: T.fontUI, background: T.surface,
-        border: `1px solid ${T.line}`, borderRadius: T.r1, padding: '8px 10px',
-        color: T.ink, outline: 'none',
-      }}>
+      <select value={subjectId} onChange={e => setSubjectId(e.target.value)} style={INPUT}>
         <option value="">— General</option>
         {subjects.filter(s => s.isActive).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
       </select>
+      <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+        title="Fecha límite (opcional)" style={INPUT}
+      />
       <Button size="sm" variant="primary" onClick={submit} disabled={!title.trim()}>Agregar</Button>
       <Button size="sm" variant="ghost" onClick={onDone}>✕</Button>
     </div>
@@ -182,10 +184,9 @@ export function TasksTable() {
         {/* Header */}
         <div style={{
           display: 'grid', gridTemplateColumns: '40px 1fr 130px 100px 110px 110px 40px',
-          borderBottom: `1px solid ${T.line}`, padding: '0 0 0 40px',
-          background: T.surfaceAlt,
+          borderBottom: `1px solid ${T.line}`, background: T.surfaceAlt,
         }}>
-          {['Tarea','Materia','Prioridad','Vence','Estado',''].map((h,i) => (
+          {['','Tarea','Materia','Prioridad','Vence','Estado',''].map((h,i) => (
             <div key={i} style={{ ...HDR, padding: '12px 8px' }}>{h}</div>
           ))}
         </div>

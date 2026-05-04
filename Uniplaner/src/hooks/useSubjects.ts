@@ -8,7 +8,7 @@ const KEY = ['subjects'] as const;
 export function useSubjects() {
   return useQuery({
     queryKey: KEY,
-    queryFn: () => db.subjects.orderBy('name').toArray(),
+    queryFn: () => db.subjects.toArray().then(arr => arr.sort((a, b) => a.name.localeCompare(b.name))),
   });
 }
 
