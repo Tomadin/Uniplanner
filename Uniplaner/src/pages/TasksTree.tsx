@@ -56,9 +56,11 @@ function AddTaskForm({ subjectId, parentTaskId = null, onDone }: {
 }
 
 // ─── Nodo de tarea (recursivo) ────────────────────────────────────────────────
+// La indentación del árbol viene del CONTAINER, no del nodo.
+// depth se usa solo para el fontWeight del título (negrita en raíz).
 
-function TaskNode({ task, depth, childrenOf, now }: {
-  task: Task; depth: number;
+function TaskNode({ task, depth = 0, childrenOf, now }: {
+  task: Task; depth?: number;
   childrenOf: (id: string) => Task[];
   now: Date;
 }) {
@@ -85,11 +87,10 @@ function TaskNode({ task, depth, childrenOf, now }: {
         onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
         style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          padding: '9px 6px', paddingLeft: depth * 28 + 6,
+          padding: '9px 6px',
           borderRadius: T.r1, opacity: isCompleted ? 0.55 : 1,
           background: hover ? T.bgAlt : 'transparent', transition: 'background 100ms',
         }}>
-        {/* Expand toggle */}
         {kids.length > 0 ? (
           <button onClick={() => setOpen(!open)} style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
@@ -131,26 +132,24 @@ function TaskNode({ task, depth, childrenOf, now }: {
       </div>
 
       {addKid && (
-        <div style={{ paddingLeft: (depth + 1) * 28 + 6 }}>
-          <AddTaskForm subjectId={task.subjectId} parentTaskId={task.id} onDone={() => setAddKid(false)} />
-        </div>
+        <AddTaskForm subjectId={task.subjectId} parentTaskId={task.id} onDone={() => setAddKid(false)} />
       )}
 
       {open && kids.length > 0 && (
-        <div style={{ position: 'relative', marginLeft: depth * 28 + 32 }}>
+        <div style={{ position: 'relative', paddingLeft: 28, marginTop: 2 }}>
+          {/* Línea vertical del árbol */}
           <div style={{
-            position: 'absolute', left: 0, top: 0, bottom: 12,
+            position: 'absolute', left: 12, top: 0, bottom: 10,
             borderLeft: `2px solid ${T.line}`,
           }} />
           {kids.map(k => (
             <div key={k.id} style={{ position: 'relative' }}>
+              {/* Rama horizontal */}
               <div style={{
-                position: 'absolute', left: 0, top: 22,
-                width: 14, borderTop: `2px solid ${T.line}`,
+                position: 'absolute', left: -16, top: 20,
+                width: 16, borderTop: `2px solid ${T.line}`,
               }} />
-              <div style={{ marginLeft: 14 }}>
-                <TaskNode task={k} depth={depth + 1} childrenOf={childrenOf} now={now} />
-              </div>
+              <TaskNode task={k} depth={depth + 1} childrenOf={childrenOf} now={now} />
             </div>
           ))}
         </div>
