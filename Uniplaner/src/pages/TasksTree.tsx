@@ -136,18 +136,19 @@ function TaskNode({ task, depth = 0, childrenOf, now }: {
       )}
 
       {open && kids.length > 0 && (
-        <div style={{ position: 'relative', paddingLeft: 28, marginTop: 2 }}>
-          {/* Línea vertical del árbol */}
-          <div style={{
-            position: 'absolute', left: 12, top: 0, bottom: 10,
-            borderLeft: `2px solid ${T.line}`,
-          }} />
+        <div style={{
+          marginLeft: 22,
+          paddingLeft: 18,
+          borderLeft: `2px solid ${T.line}`,
+          marginTop: 1,
+          marginBottom: 2,
+        }}>
           {kids.map(k => (
             <div key={k.id} style={{ position: 'relative' }}>
-              {/* Rama horizontal */}
+              {/* Rama horizontal desde la línea vertical al contenido */}
               <div style={{
-                position: 'absolute', left: -16, top: 20,
-                width: 16, borderTop: `2px solid ${T.line}`,
+                position: 'absolute', left: -18, top: 21,
+                width: 14, height: 2, background: T.line,
               }} />
               <TaskNode task={k} depth={depth + 1} childrenOf={childrenOf} now={now} />
             </div>

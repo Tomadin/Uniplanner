@@ -9,16 +9,40 @@ import type { LocalSnapshot } from '../db/db';
 
 type Identifiable = { id: string; updatedAt: string };
 
-function mergeCollection<T extends Identifiable>(remote: T[], local: T[]): T[] {
-  const merged = new Map<string, T>();
+/**
+ * Merge con detección de eliminaciones.
+ *
+ * Si un item existe en remote pero NO en local, usamos `remoteExportedAt`
+ * (el timestamp de la última subida a Drive) como referencia:
+ *   - item.updatedAt > remoteExportedAt  → item nuevo de otro dispositivo → incluir
+ *   - item.updatedAt ≤ remoteExportedAt  → item ya estaba en la última sync y
+ *                                          fue eliminado localmente → descartar
+ *
+ * Esto evita que eliminaciones locales sean sobreescritas por el sync siguiente.
+ */
+function mergeCollection<T extends Identifiable>(
+  remote: T[],
+  local: T[],
+  remoteExportedAt: string,
+): T[] {
+  const merged  = new Map<string, T>();
+  const localIds = new Set(local.map(item => item.id));
 
   for (const item of remote) {
-    merged.set(item.id, item);
+    if (localIds.has(item.id)) {
+      // Existe en ambos lados: LWW (se resuelve abajo con la pasada local)
+      merged.set(item.id, item);
+    } else if (item.updatedAt > remoteExportedAt) {
+      // No está en local PERO es más nuevo que la última exportación:
+      // vino de otro dispositivo después del último sync → incluir
+      merged.set(item.id, item);
+    }
+    // Caso restante: estaba en Drive cuando se hizo el último sync pero ya no
+    // está en local → fue eliminado localmente → no incluir
   }
 
   for (const item of local) {
     const existing = merged.get(item.id);
-    // ISO strings son comparables lexicográficamente: "2026-04..." > "2026-03..."
     if (!existing || item.updatedAt > existing.updatedAt) {
       merged.set(item.id, item);
     }
@@ -39,13 +63,14 @@ export function mergeLastWriteWins(
   remote: DriveDataFile,
   local: LocalSnapshot,
 ): DriveDataFile {
+  const ref = remote.exportedAt ?? new Date(0).toISOString();
   return {
-    version: remote.version ?? 1,
+    version:    remote.version ?? 1,
     exportedAt: new Date().toISOString(),
-    subjects:   mergeCollection<Subject>(remote.subjects   ?? [], local.subjects),
-    tasks:      mergeCollection<Task>   (remote.tasks      ?? [], local.tasks),
-    events:     mergeCollection<Event>  (remote.events     ?? [], local.events),
-    quickNotes: mergeCollection<QuickNote>(remote.quickNotes ?? [], local.quickNotes),
+    subjects:   mergeCollection<Subject>   (remote.subjects    ?? [], local.subjects,   ref),
+    tasks:      mergeCollection<Task>      (remote.tasks       ?? [], local.tasks,      ref),
+    events:     mergeCollection<Event>     (remote.events      ?? [], local.events,     ref),
+    quickNotes: mergeCollection<QuickNote> (remote.quickNotes  ?? [], local.quickNotes, ref),
   };
 }
 
