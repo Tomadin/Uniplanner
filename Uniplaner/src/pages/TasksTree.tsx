@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { T } from '../design/tokens';
+import { T, PRIORITY_META, PRIORITY_CYCLE } from '../design/tokens';
+import type { TaskPriorityKey } from '../design/tokens';
 import { SectionTitle, Card, EmptyState } from '../components/ui/Misc';
 import { Button, Checkbox, IconButton } from '../components/ui/Button';
 import { PriorityChip } from '../components/ui/Chips';
 import { Icon } from '../components/ui/Icon';
 import { useSubjects } from '../hooks/useSubjects';
 import { useTasks, useAddTask, useToggleTask, useDeleteTask, useUpdateTask } from '../hooks/useTasks';
-import { PRIORITY_CYCLE } from '../design/tokens';
 import { relativeLabel, daysBetween } from '../utils/date';
 import type { Task } from '../types';
 
@@ -17,14 +17,20 @@ function AddTaskForm({ subjectId, parentTaskId = null, onDone }: {
   parentTaskId?: string | null;
   onDone: () => void;
 }) {
-  const [title,   setTitle]   = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [title,    setTitle]    = useState('');
+  const [dueDate,  setDueDate]  = useState('');
+  const [priority, setPriority] = useState<TaskPriorityKey>('MEDIUM');
   const add = useAddTask();
+  const INPUT: React.CSSProperties = {
+    fontSize: 13, fontFamily: T.fontUI, background: T.surfaceAlt,
+    border: `1px solid ${T.line}`, borderRadius: T.r1,
+    padding: '8px 10px', outline: 'none', color: T.ink,
+  };
   const submit = () => {
     if (!title.trim()) return;
     add.mutate({
       subjectId, parentTaskId, title: title.trim(),
-      description: null, priority: 'MEDIUM', status: 'NOT_STARTED',
+      description: null, priority, status: 'NOT_STARTED',
       dueDate: dueDate ? new Date(dueDate).toISOString() : null,
       completedAt: null, observations: null,
     });
@@ -41,14 +47,23 @@ function AddTaskForm({ subjectId, parentTaskId = null, onDone }: {
           padding: '8px 12px', outline: 'none', color: T.ink,
         }}
       />
-      <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-        title="Fecha límite (opcional)"
-        style={{
-          fontSize: 13, fontFamily: T.fontUI, background: T.surfaceAlt,
-          border: `1px solid ${T.line}`, borderRadius: T.r1,
-          padding: '8px 10px', outline: 'none', color: dueDate ? T.ink : T.inkMuted,
-        }}
-      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, whiteSpace: 'nowrap' }}>Prioridad:</span>
+        <select value={priority} onChange={e => setPriority(e.target.value as TaskPriorityKey)}
+          style={{ ...INPUT, background: PRIORITY_META[priority].bg, color: PRIORITY_META[priority].fg, fontWeight: 500 }}>
+          {PRIORITY_CYCLE.filter(p => p !== 'NONE').map(p => (
+            <option key={p} value={p} style={{ background: PRIORITY_META[p].bg, color: PRIORITY_META[p].fg }}>
+              {PRIORITY_META[p].label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, whiteSpace: 'nowrap' }}>Vence:</span>
+        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+          title="Fecha de vencimiento (opcional)" style={INPUT}
+        />
+      </div>
       <Button size="sm" variant="soft" onClick={submit} disabled={!title.trim()}>Agregar</Button>
       <Button size="sm" variant="ghost" onClick={onDone}>✕</Button>
     </div>
@@ -72,12 +87,13 @@ function TaskNode({ task, depth = 0, childrenOf, now }: {
   const [hover,   setHover]   = useState(false);
   const [addKid,  setAddKid]  = useState(false);
 
-  const isCompleted = task.status === 'COMPLETED';
+  const isCompleted = task.status === 'COMPLETED' || task.status === 'CANCELLED';
   const isOverdue   = task.dueDate && !isCompleted && daysBetween(task.dueDate, now) < 0;
 
   const cyclePriority = () => {
-    const idx  = PRIORITY_CYCLE.indexOf(task.priority);
-    const next = PRIORITY_CYCLE[(idx + 1) % PRIORITY_CYCLE.length];
+    const cycle = PRIORITY_CYCLE.filter(p => p !== 'NONE');
+    const idx  = cycle.indexOf(task.priority as typeof cycle[number]);
+    const next = cycle[(idx + 1) % cycle.length];
     update.mutate({ id: task.id, changes: { priority: next } });
   };
 
@@ -110,11 +126,9 @@ function TaskNode({ task, depth = 0, childrenOf, now }: {
         }}>{task.title}</div>
 
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {task.priority !== 'NONE' && (
-            <div onClick={cyclePriority} style={{ cursor: 'pointer' }} title="Clic para cambiar prioridad">
-              <PriorityChip value={task.priority} compact />
-            </div>
-          )}
+          <div onClick={cyclePriority} style={{ cursor: 'pointer' }} title="Clic para cambiar prioridad">
+            <PriorityChip value={task.priority} compact />
+          </div>
           {task.dueDate && (
             <span style={{
               fontSize: 11, fontFamily: T.fontUI,

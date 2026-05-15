@@ -327,9 +327,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: string) => void }) {
           </Card>
 
           {/* Notas rápidas */}
-          <Card padding={24} style={{
-            background: `repeating-linear-gradient(to bottom, ${T.surface}, ${T.surface} 29px, ${T.lineSoft} 29px, ${T.lineSoft} 30px)`,
-          }}>
+          <Card padding={24} style={{ background: T.surfaceAlt }}>
             <SectionHeader title="Notas rápidas" />
             <QuickNoteInput />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>

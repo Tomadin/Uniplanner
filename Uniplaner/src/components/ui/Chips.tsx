@@ -29,6 +29,8 @@ export function StatusChip({ value, compact, onClick }: { value: TaskStatusKey }
       borderRadius: T.rFull, background: s.bg, color: s.fg,
       fontSize: compact ? 11 : 12, fontWeight: 500, fontFamily: T.fontUI,
       letterSpacing: 0.1, cursor: onClick ? 'pointer' : 'default', whiteSpace: 'nowrap',
+      border: onClick ? '1.5px solid rgba(0,0,0,0.07)' : 'none',
+      transition: 'background 200ms ease, color 200ms ease',
     }}>{s.label}</span>
   );
 }
