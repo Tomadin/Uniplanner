@@ -113,7 +113,7 @@ export function Sidebar({ active, onNavigate, onLogout, onSyncNow }: SidebarProp
         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
         background: T.surface, borderRadius: T.r2,
       }}>
-        <Avatar name={user?.name ?? '?'} size={30} />
+        <Avatar name={user?.name ?? '?'} picture={user?.picture} size={30} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, color: T.ink, fontFamily: T.fontUI, fontWeight: 500 }}>{user?.name}</div>
           <div style={{

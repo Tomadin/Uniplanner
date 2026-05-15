@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { T } from '../../design/tokens';
 
 export function Card({ children, style, onClick, padding = 20 }: {
@@ -33,14 +34,26 @@ export function Label({ children, style }: { children: React.ReactNode; style?: 
   );
 }
 
-export function Avatar({ name = '?', size = 32 }: { name?: string; size?: number }) {
+export function Avatar({ name = '?', size = 32, picture }: { name?: string; size?: number; picture?: string }) {
+  const [imgError, setImgError] = useState(false);
+  const base: React.CSSProperties = { width: size, height: size, borderRadius: '50%', flexShrink: 0 };
+
+  if (picture && !imgError) {
+    return (
+      <img
+        src={picture} alt={name}
+        referrerPolicy="no-referrer"
+        style={{ ...base, objectFit: 'cover' }}
+        onError={() => setImgError(true)}
+      />
+    );
+  }
   return (
     <div style={{
-      width: size, height: size, borderRadius: '50%',
-      background: T.accent, color: '#FBFAF5',
+      ...base, background: T.accent, color: '#FBFAF5',
       fontSize: size * 0.42, fontWeight: 500,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: T.fontUI, flexShrink: 0,
+      fontFamily: T.fontUI,
     }}>{name.charAt(0).toUpperCase()}</div>
   );
 }
