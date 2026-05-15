@@ -255,11 +255,11 @@ function expandToFC(events: UPEvent[], tasks: ReturnType<typeof useTasks>['data'
     if (!t.dueDate || t.status === 'COMPLETED' || t.status === 'CANCELLED') continue;
     result.push({
       id: `task_${t.id}`,
-      title: `⏰ ${t.title}`,
+      title: t.title,
       start: t.dueDate,
       allDay: true,
-      display: 'background',
-      backgroundColor: T.warn + '55',
+      backgroundColor: T.warn + '44',
+      borderColor: T.warn,
       extendedProps: { isTaskDue: true },
     });
   }
@@ -284,9 +284,13 @@ export function Calendar() {
     defaultStart?: string;
     defaultEnd?: string;
   } | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveError,  setSaveError]  = useState<string | null>(null);
+  const [onlyTasks,  setOnlyTasks]  = useState(false);
 
-  const fcEvents = expandToFC(events, tasks, subjects);
+  const allFcEvents = expandToFC(events, tasks, subjects);
+  const fcEvents = onlyTasks
+    ? allFcEvents.filter(e => (e.extendedProps as { isTaskDue?: boolean }).isTaskDue)
+    : allFcEvents;
   const isSaving = addEvent.isPending || updateEvent.isPending;
 
   const handleDateSelect = (sel: DateSelectArg) => {
@@ -338,40 +342,62 @@ export function Calendar() {
       }}>
         <SectionTitle size="lg">Agenda</SectionTitle>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', rowGap: 6 }}>
-          <div style={{ display: 'flex', gap: 12, fontSize: 11, fontFamily: T.fontUI, color: T.inkSoft, alignItems: 'center' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: T.danger, display: 'inline-block' }} />
-              Examen
-            </span>
-            {subjects.length > 0 && (
+
+          {/* Leyenda — se oculta en modo solo-vencimientos */}
+          {!onlyTasks && (
+            <div style={{ display: 'flex', gap: 12, fontSize: 11, fontFamily: T.fontUI, color: T.inkSoft, alignItems: 'center' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ display: 'flex', gap: 2 }}>
-                  {subjects.slice(0, 4).map(s => (
-                    <span key={s.id} style={{ width: 8, height: 8, borderRadius: 2, background: s.color, display: 'inline-block' }} />
-                  ))}
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: T.danger, display: 'inline-block' }} />
+                Examen
+              </span>
+              {subjects.length > 0 && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ display: 'flex', gap: 2 }}>
+                    {subjects.slice(0, 4).map(s => (
+                      <span key={s.id} style={{ width: 8, height: 8, borderRadius: 2, background: s.color, display: 'inline-block' }} />
+                    ))}
+                  </span>
+                  ↺ Clase
                 </span>
-                ↺ Clase
-              </span>
-            )}
-            {subjects.length > 0 && (
+              )}
+              {subjects.length > 0 && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{
+                    width: 10, height: 10, borderRadius: 2,
+                    background: 'transparent', border: `2px solid ${T.inkMuted}`,
+                    display: 'inline-block',
+                  }} />
+                  Evento de materia
+                </span>
+              )}
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{
-                  width: 10, height: 10, borderRadius: 2,
-                  background: 'transparent', border: `2px solid ${T.inkMuted}`,
-                  display: 'inline-block',
-                }} />
-                Evento de materia
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: T.accent, display: 'inline-block' }} />
+                Evento general
               </span>
-            )}
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: T.accent, display: 'inline-block' }} />
-              Evento general
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: T.warn + '88', display: 'inline-block' }} />
-              Vence tarea
-            </span>
-          </div>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: T.warn + '88', display: 'inline-block' }} />
+                Vence tarea
+              </span>
+            </div>
+          )}
+
+          {/* Toggle: solo vencimientos */}
+          <button onClick={() => setOnlyTasks(v => !v)} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 12px', borderRadius: T.rFull, cursor: 'pointer',
+            background: onlyTasks ? T.warnSoft : T.surfaceAlt,
+            border: `1px solid ${onlyTasks ? T.warn + 'AA' : T.line}`,
+            color: onlyTasks ? T.ink : T.inkSoft,
+            fontSize: 12, fontFamily: T.fontUI, fontWeight: onlyTasks ? 600 : 400,
+            transition: 'all 150ms',
+          }}>
+            <span style={{
+              width: 10, height: 10, borderRadius: 3, flexShrink: 0,
+              background: onlyTasks ? T.warn : T.warn + '88', display: 'inline-block',
+            }} />
+            Solo vencimientos
+          </button>
+
           <Button variant="primary" size="sm" icon="plus" onClick={() => { setSaveError(null); setModal({ mode: 'create' }); }}>
             Nuevo evento
           </Button>
@@ -401,6 +427,7 @@ export function Calendar() {
           .fc .fc-toolbar { padding: 16px 20px; }
           .fc .fc-view-harness { padding: 0; }
           .fc a.fc-daygrid-day-number, .fc a.fc-col-header-cell-cushion { cursor: pointer; }
+          .fc .fc-daygrid-more-link { font-size: 11px; font-family: ${T.fontUI}; color: ${T.inkSoft}; }
         `}</style>
 
         <FullCalendar
@@ -420,7 +447,27 @@ export function Calendar() {
               color?: string; isExam?: boolean; isTaskDue?: boolean;
               isSubjectEvent?: boolean; isRecurring?: boolean;
             };
-            if (props.isTaskDue || !props.color) return true;
+
+            // Vencimiento de tarea — chip compacto amarillo
+            if (props.isTaskDue) {
+              return (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 3,
+                  background: T.warn + '44', borderRadius: 4, overflow: 'hidden',
+                  borderLeft: `2px solid ${T.warn}`,
+                  padding: '2px 5px', width: '100%', minWidth: 0,
+                  height: '100%', boxSizing: 'border-box',
+                  color: T.ink, fontSize: 11,
+                }}>
+                  <span style={{ flexShrink: 0, fontSize: 9 }}>⏰</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {arg.event.title}
+                  </span>
+                </div>
+              );
+            }
+
+            if (!props.color) return true;
 
             const c = props.color;
             const timeSpan = arg.timeText
