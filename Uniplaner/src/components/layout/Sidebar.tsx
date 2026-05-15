@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { T } from '../../design/tokens';
 import { Icon } from '../ui/Icon';
 import { Avatar } from '../ui/Misc';
@@ -20,15 +21,17 @@ interface SidebarProps {
   active: Route;
   onNavigate: (r: Route) => void;
   onLogout: () => void;
+  onSyncNow: () => void;
 }
 
-export function Sidebar({ active, onNavigate, onLogout }: SidebarProps) {
+export function Sidebar({ active, onNavigate, onLogout, onSyncNow }: SidebarProps) {
   const { user } = useAuthStore();
   const { isSyncing, lastSyncAt, syncError } = useSyncStore();
+  const [syncHover, setSyncHover] = useState(false);
 
-  const syncLabel = syncError ? 'Fallo sync'
-    : isSyncing ? 'Sincronizando…'
-    : lastSyncAt ? `Sync ${formatDate(lastSyncAt, { withTime: true })}`
+  const syncLabel = syncError   ? 'Error — reintentar'
+    : isSyncing                 ? 'Sincronizando…'
+    : lastSyncAt                ? `Sync ${formatDate(lastSyncAt, { withTime: true })}`
     : 'Pendiente';
 
   return (
@@ -74,15 +77,36 @@ export function Sidebar({ active, onNavigate, onLogout }: SidebarProps) {
 
       <div style={{ flex: 1 }} />
 
-      {/* Sync status */}
-      <div style={{
-        padding: '10px 12px', marginBottom: 10, background: T.surface, borderRadius: T.r2,
-        fontSize: 11, fontFamily: T.fontUI, display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        <Icon name={isSyncing ? 'sync' : syncError ? 'wifiOff' : 'sync'} size={14}
-          stroke={syncError ? T.danger : !isSyncing ? T.accent : T.inkSoft} />
+      {/* Sync status — botón de sync manual */}
+      <style>{`@keyframes up-spin { to { transform: rotate(360deg); } }`}</style>
+      <button
+        onClick={() => { if (!isSyncing) onSyncNow(); }}
+        onMouseEnter={() => setSyncHover(true)}
+        onMouseLeave={() => setSyncHover(false)}
+        title={isSyncing ? 'Sincronizando…' : syncError ? 'Reintentar sync' : 'Sincronizar ahora'}
+        style={{
+          padding: '10px 12px', marginBottom: 10, width: '100%',
+          background: syncHover && !isSyncing ? T.bgAlt : T.surface,
+          borderRadius: T.r2, border: 'none', cursor: isSyncing ? 'default' : 'pointer',
+          fontSize: 11, fontFamily: T.fontUI, display: 'flex', alignItems: 'center', gap: 8,
+          transition: 'background 150ms', textAlign: 'left',
+        }}
+      >
+        <span style={{
+          display: 'inline-flex', flexShrink: 0,
+          animation: isSyncing ? 'up-spin 1s linear infinite' : 'none',
+        }}>
+          <Icon
+            name={syncError ? 'wifiOff' : 'sync'} size={14}
+            stroke={syncError ? T.danger : isSyncing ? T.inkSoft : T.accent}
+          />
+        </span>
         <div style={{ flex: 1, color: syncError ? T.danger : T.inkSoft }}>{syncLabel}</div>
-      </div>
+        {!isSyncing && (
+          <Icon name="sync" size={11} stroke={T.inkMuted}
+            style={{ opacity: syncHover ? 0.6 : 0, transition: 'opacity 150ms' }} />
+        )}
+      </button>
 
       {/* User */}
       <div style={{

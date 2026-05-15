@@ -58,7 +58,7 @@ function AppInner() {
 
   return (
     <div style={{ height: '100%', display: 'flex', background: T.bg }}>
-      <Sidebar active={route} onNavigate={setRoute} onLogout={logout} />
+      <Sidebar active={route} onNavigate={setRoute} onLogout={logout} onSyncNow={syncNow} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <SyncBanner onRetry={syncNow} />
         {(route === 'tasks-table' || route === 'tasks-tree') && (
