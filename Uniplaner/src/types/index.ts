@@ -5,11 +5,19 @@ export type TaskStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLE
 
 // ─── Entidades de dominio (sec. 4.2) ─────────────────────────────────────────
 
+export interface ScheduleSlot {
+  dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6; // JS Date.getDay(): 0=Dom, 1=Lun … 6=Sáb
+  startTime: string; // "HH:MM"
+  endTime: string;   // "HH:MM"
+}
+
 export interface Subject {
   id: string;           // UUID generado en cliente
   name: string;
   color: string;        // Hex color p.ej. "#D98880"
   isActive: boolean;    // false = cuatrimestre anterior
+  schedule?: ScheduleSlot[];     // undefined o [] = sin horario fijo
+  courseEndDate?: string | null; // ISO 8601 fecha fin del cursado
   createdAt: string;    // ISO 8601
   updatedAt: string;    // ISO 8601 — Last-Write-Wins
 }

@@ -6,7 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import type { EventClickArg, DateSelectArg, EventInput } from '@fullcalendar/core';
 import { RRule } from 'rrule';
 import { T } from '../design/tokens';
-import { Button, IconButton } from '../components/ui/Button';
+import { Button, Checkbox, IconButton } from '../components/ui/Button';
 import { SectionTitle } from '../components/ui/Misc';
 import { useSubjects } from '../hooks/useSubjects';
 import { useEvents, useAddEvent, useUpdateEvent, useDeleteEvent } from '../hooks/useEvents';
@@ -20,33 +20,43 @@ interface EventModalProps {
   defaultStart?: string;
   defaultEnd?: string;
   subjects: Subject[];
+  isSaving: boolean;
+  saveError: string | null;
   onSave: (data: Omit<UPEvent, 'id' | 'updatedAt'>) => void;
   onDelete?: () => void;
   onClose: () => void;
 }
 
-function EventModal({ event, defaultStart, defaultEnd, subjects, onSave, onDelete, onClose }: EventModalProps) {
-  const toLocal = (iso?: string) => iso ? new Date(iso).toISOString().slice(0, 16) : '';
+function EventModal({ event, defaultStart, defaultEnd, subjects, isSaving, saveError, onSave, onDelete, onClose }: EventModalProps) {
+  // BUG-1: producir hora local para datetime-local (toISOString devuelve UTC)
+  const toLocal = (iso?: string) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
 
-  const [title,   setTitle]   = useState(event?.title ?? '');
-  const [start,   setStart]   = useState(toLocal(event?.startTime ?? defaultStart));
-  const [end,     setEnd]     = useState(toLocal(event?.endTime   ?? defaultEnd));
-  const [subjId,  setSubjId]  = useState(event?.subjectId ?? '');
-  const [isExam,  setIsExam]  = useState(event?.isExam ?? false);
-  const [rrule,   setRrule]   = useState(event?.recurrenceRule ?? '');
+  const [title,      setTitle]      = useState(event?.title ?? '');
+  const [start,      setStart]      = useState(toLocal(event?.startTime ?? defaultStart));
+  const [end,        setEnd]        = useState(toLocal(event?.endTime   ?? defaultEnd));
+  const [subjId,     setSubjId]     = useState(event?.subjectId ?? '');
+  const [isExam,     setIsExam]     = useState(event?.isExam ?? false);
+  const [rrule,      setRrule]      = useState(event?.recurrenceRule ?? '');
+  const [endDate,    setEndDate]    = useState(event?.recurrenceEndDate?.slice(0, 10) ?? '');
+  const [confirmDel, setConfirmDel] = useState(false);
 
   const valid = title.trim() && start && end;
+  const isRecurring = !!event?.recurrenceRule;
 
   const submit = () => {
-    if (!valid) return;
+    if (!valid || isSaving) return;
     onSave({
       title: title.trim(),
       startTime: new Date(start).toISOString(),
       endTime:   new Date(end).toISOString(),
       subjectId: subjId || null,
       isExam,
-      recurrenceRule: rrule || null,
-      recurrenceEndDate: null,
+      recurrenceRule:    rrule || null,
+      recurrenceEndDate: (rrule && endDate) ? new Date(endDate).toISOString() : null,
     });
   };
 
@@ -54,7 +64,7 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, onSave, onDelet
     width: '100%', padding: '9px 12px', fontSize: 14,
     fontFamily: T.fontUI, background: T.surfaceAlt,
     border: `1px solid ${T.line}`, borderRadius: T.r1,
-    color: T.ink, outline: 'none',
+    color: T.ink, outline: 'none', boxSizing: 'border-box',
   };
 
   const LABEL: React.CSSProperties = {
@@ -73,6 +83,7 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, onSave, onDelet
         background: T.surface, borderRadius: T.r4, padding: 28,
         width: '100%', maxWidth: 480, boxShadow: T.shadowLg,
         border: `1px solid ${T.line}`,
+        maxHeight: 'calc(100dvh - 80px)', overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 20 }}>
           <SectionTitle size="md" style={{ flex: 1 }}>
@@ -80,6 +91,18 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, onSave, onDelet
           </SectionTitle>
           <IconButton icon="x" size={28} onClick={onClose} />
         </div>
+
+        {/* UX-3: aviso cuando se edita un evento recurrente */}
+        {isRecurring && (
+          <div style={{
+            background: T.warnSoft, border: `1px solid ${T.warn}55`,
+            borderRadius: T.r1, padding: '8px 12px',
+            fontSize: 12, fontFamily: T.fontUI, color: T.inkSoft,
+            marginBottom: 14,
+          }}>
+            Este es un evento recurrente. Los cambios afectarán todas las ocurrencias.
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Título */}
@@ -110,11 +133,11 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, onSave, onDelet
             </select>
           </div>
 
-          {/* Recurrencia */}
+          {/* UX-4: label sin jerga técnica */}
           <div>
-            <label style={LABEL}>Recurrencia (RRULE, opcional)</label>
+            <label style={LABEL}>Repetición</label>
             <select style={INPUT} value={rrule} onChange={e => setRrule(e.target.value)}>
-              <option value="">Sin recurrencia</option>
+              <option value="">Sin repetición</option>
               <option value="FREQ=DAILY">Diario</option>
               <option value="FREQ=WEEKLY">Semanal (mismo día)</option>
               <option value="FREQ=WEEKLY;BYDAY=MO,WE,FR">Lunes, Miércoles, Viernes</option>
@@ -123,22 +146,59 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, onSave, onDelet
             </select>
           </div>
 
-          {/* Es examen */}
+          {/* BUG-3: fecha de fin de repetición, solo visible cuando hay repetición */}
+          {rrule && (
+            <div>
+              <label style={LABEL}>Repetir hasta (opcional)</label>
+              <input style={INPUT} type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            </div>
+          )}
+
+          {/* UX-5: Checkbox del sistema de diseño, no nativo */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-            <input type="checkbox" checked={isExam} onChange={e => setIsExam(e.target.checked)} />
+            <Checkbox checked={isExam} onChange={v => setIsExam(v)} />
             <span style={{ fontSize: 13, fontFamily: T.fontUI, color: T.inkSoft }}>
-              Marcar como examen (badge especial en el calendario)
+              Marcar como examen
             </span>
           </label>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-          {onDelete && <Button variant="danger" size="sm" onClick={onDelete}>Eliminar</Button>}
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" size="sm" disabled={!valid} onClick={submit}>
-            {event ? 'Guardar cambios' : 'Crear evento'}
-          </Button>
-        </div>
+        {/* UX-2: feedback de error al guardar */}
+        {saveError && (
+          <div style={{
+            marginTop: 12, padding: '8px 12px', borderRadius: T.r1,
+            background: T.dangerSoft, fontSize: 12,
+            fontFamily: T.fontUI, color: T.danger,
+          }}>
+            {saveError}
+          </div>
+        )}
+
+        {/* UX-1: confirmación inline en lugar de window.confirm() */}
+        {confirmDel ? (
+          <div style={{
+            marginTop: 20, padding: '12px 14px', borderRadius: T.r2,
+            background: T.dangerSoft, border: `1px solid ${T.danger}44`,
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            <span style={{ fontSize: 13, fontFamily: T.fontUI, color: T.ink }}>
+              ¿Eliminar "{event?.title}"? Esta acción no se puede deshacer.
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="danger" size="sm" onClick={onDelete}>Sí, eliminar</Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirmDel(false)}>Cancelar</Button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+            {onDelete && <Button variant="danger" size="sm" onClick={() => setConfirmDel(true)}>Eliminar</Button>}
+            <Button variant="ghost" size="sm" onClick={onClose}>Cancelar</Button>
+            {/* UX-2: botón con estado de carga */}
+            <Button variant="primary" size="sm" disabled={!valid || isSaving} onClick={submit}>
+              {isSaving ? 'Guardando…' : event ? 'Guardar cambios' : 'Crear evento'}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -149,16 +209,20 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, onSave, onDelet
 function expandToFC(events: UPEvent[], tasks: ReturnType<typeof useTasks>['data'], subjects: Subject[]): EventInput[] {
   const subjectById = Object.fromEntries(subjects.map(s => [s.id, s]));
   const result: EventInput[] = [];
+  const RANGE_FUTURE = new Date(Date.now() + 365 * 24 * 3600 * 1000);
 
   for (const ev of events) {
     const subj = ev.subjectId ? subjectById[ev.subjectId] : null;
     const color = ev.isExam ? T.danger : (subj?.color ?? T.accent);
+    const isRecurring = !!ev.recurrenceRule;
+    // Clases recurrentes de materia y exámenes → fondo sólido; todo lo demás → tinte ghost
+    const isSolid = ev.isExam || (!!subj && isRecurring);
     const base: EventInput = {
       id: ev.id,
       title: ev.title,
-      backgroundColor: color,
-      borderColor: color,
-      extendedProps: { upEvent: ev, isExam: ev.isExam },
+      backgroundColor: isSolid ? color : color + '28',
+      borderColor:     isSolid ? color : color + '80',
+      extendedProps: { upEvent: ev, isExam: ev.isExam, color, isSubjectEvent: !!subj, isRecurring },
     };
 
     if (!ev.recurrenceRule) {
@@ -166,12 +230,13 @@ function expandToFC(events: UPEvent[], tasks: ReturnType<typeof useTasks>['data'
       continue;
     }
 
-    // Expandir RRULE — mostrar hasta 1 año
+    // BUG-2: expandir desde dtstart (no desde "hoy") para mostrar ocurrencias pasadas
     try {
       const dtstart = new Date(ev.startTime);
       const duration = new Date(ev.endTime).getTime() - dtstart.getTime();
       const rule = RRule.fromString(`DTSTART:${dtstart.toISOString().replace(/[-:]/g,'').split('.')[0]}Z\nRRULE:${ev.recurrenceRule}`);
-      const occurrences = rule.between(new Date(), new Date(Date.now() + 365 * 24 * 3600 * 1000));
+      const to = ev.recurrenceEndDate ? new Date(ev.recurrenceEndDate) : RANGE_FUTURE;
+      const occurrences = rule.between(dtstart, to, true);
       for (const occ of occurrences) {
         result.push({
           ...base,
@@ -186,7 +251,6 @@ function expandToFC(events: UPEvent[], tasks: ReturnType<typeof useTasks>['data'
     }
   }
 
-  // Tareas con fecha límite como indicadores de fondo
   for (const t of (tasks ?? [])) {
     if (!t.dueDate || t.status === 'COMPLETED' || t.status === 'CANCELLED') continue;
     result.push({
@@ -220,10 +284,13 @@ export function Calendar() {
     defaultStart?: string;
     defaultEnd?: string;
   } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const fcEvents = expandToFC(events, tasks, subjects);
+  const isSaving = addEvent.isPending || updateEvent.isPending;
 
   const handleDateSelect = (sel: DateSelectArg) => {
+    setSaveError(null);
     setModal({ mode: 'create', defaultStart: sel.startStr, defaultEnd: sel.endStr });
     calRef.current?.getApi().unselect();
   };
@@ -233,20 +300,30 @@ export function Calendar() {
     if (isTaskDue) return;
     const originalId = info.event.extendedProps.originalId ?? info.event.id;
     const found = events.find(e => e.id === originalId);
-    if (found) setModal({ mode: 'edit', event: found });
+    if (found) {
+      setSaveError(null);
+      setModal({ mode: 'edit', event: found });
+    }
   };
 
+  // UX-2: no cerrar el modal en handleSave; cerrarlo solo en onSuccess
   const handleSave = (data: Omit<UPEvent, 'id' | 'updatedAt'>) => {
+    setSaveError(null);
     if (modal?.mode === 'edit' && modal.event) {
-      updateEvent.mutate({ id: modal.event.id, changes: data });
+      updateEvent.mutate({ id: modal.event.id, changes: data }, {
+        onSuccess: () => setModal(null),
+        onError:   () => setSaveError('No se pudo guardar el evento. Intentá de nuevo.'),
+      });
     } else {
-      addEvent.mutate(data);
+      addEvent.mutate(data, {
+        onSuccess: () => setModal(null),
+        onError:   () => setSaveError('No se pudo crear el evento. Intentá de nuevo.'),
+      });
     }
-    setModal(null);
   };
 
   const handleDelete = () => {
-    if (modal?.event && confirm(`¿Eliminar "${modal.event.title}"?`)) {
+    if (modal?.event) {
       deleteEvent.mutate(modal.event.id);
       setModal(null);
     }
@@ -254,25 +331,48 @@ export function Calendar() {
 
   return (
     <div style={{ padding: 24, maxWidth: 1240, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12 }}>
+      {/* UX-6: flexWrap para que la leyenda y el botón no se aprieten en pantallas intermedias */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: 20, gap: 12, flexWrap: 'wrap', rowGap: 8,
+      }}>
         <SectionTitle size="lg">Agenda</SectionTitle>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* Leyenda */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', rowGap: 6 }}>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, fontFamily: T.fontUI, color: T.inkSoft, alignItems: 'center' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: T.danger, display: 'inline-block' }} />
               Examen
             </span>
+            {subjects.length > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ display: 'flex', gap: 2 }}>
+                  {subjects.slice(0, 4).map(s => (
+                    <span key={s.id} style={{ width: 8, height: 8, borderRadius: 2, background: s.color, display: 'inline-block' }} />
+                  ))}
+                </span>
+                ↺ Clase
+              </span>
+            )}
+            {subjects.length > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{
+                  width: 10, height: 10, borderRadius: 2,
+                  background: 'transparent', border: `2px solid ${T.inkMuted}`,
+                  display: 'inline-block',
+                }} />
+                Evento de materia
+              </span>
+            )}
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: T.accent, display: 'inline-block' }} />
-              Evento
+              Evento general
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: T.warn + '88', display: 'inline-block' }} />
               Vence tarea
             </span>
           </div>
-          <Button variant="primary" size="sm" icon="plus" onClick={() => setModal({ mode: 'create' })}>
+          <Button variant="primary" size="sm" icon="plus" onClick={() => { setSaveError(null); setModal({ mode: 'create' }); }}>
             Nuevo evento
           </Button>
         </div>
@@ -293,13 +393,14 @@ export function Calendar() {
           .fc .fc-col-header-cell { background: ${T.surfaceAlt}; font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; font-weight: 600; color: ${T.inkMuted}; }
           .fc .fc-daygrid-day.fc-day-today { background: ${T.accentSoft}; }
           .fc .fc-timegrid-col.fc-day-today { background: ${T.accentSoft}33; }
-          .fc .fc-event { border-radius: 6px; font-size: 12px; font-weight: 500; padding: 2px 4px; cursor: pointer; }
+          .fc .fc-event { border-radius: 6px; font-size: 12px; font-weight: 500; padding: 0; cursor: pointer; }
           .fc .fc-daygrid-event-dot { display: none; }
           .fc-theme-standard td, .fc-theme-standard th { border-color: ${T.line}; }
           .fc-theme-standard .fc-scrollgrid { border-color: ${T.line}; }
           .fc .fc-highlight { background: ${T.accentSoft}; }
           .fc .fc-toolbar { padding: 16px 20px; }
           .fc .fc-view-harness { padding: 0; }
+          .fc a.fc-daygrid-day-number, .fc a.fc-col-header-cell-cushion { cursor: pointer; }
         `}</style>
 
         <FullCalendar
@@ -314,8 +415,79 @@ export function Calendar() {
             right:  'dayGridMonth,timeGridWeek,timeGridDay',
           }}
           events={fcEvents}
+          eventContent={(arg) => {
+            const props = arg.event.extendedProps as {
+              color?: string; isExam?: boolean; isTaskDue?: boolean;
+              isSubjectEvent?: boolean; isRecurring?: boolean;
+            };
+            if (props.isTaskDue || !props.color) return true;
+
+            const c = props.color;
+            const timeSpan = arg.timeText
+              ? <span style={{ opacity: 0.82, flexShrink: 0, fontSize: 11 }}>{arg.timeText}</span>
+              : null;
+            const titleSpan = (
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                {arg.event.title}
+              </span>
+            );
+
+            // ① Clase recurrente de materia — sólido + icono ↺
+            if (props.isSubjectEvent && props.isRecurring) {
+              return (
+                <div style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 4,
+                  background: c, borderRadius: 5, overflow: 'hidden',
+                  padding: '3px 6px', width: '100%', minWidth: 0,
+                  height: '100%', boxSizing: 'border-box',
+                  color: '#fff', fontSize: 12, fontWeight: 500,
+                }}>
+                  <span style={{ flexShrink: 0, fontSize: 10, opacity: 0.75, paddingTop: 1 }}>↺</span>
+                  {timeSpan}
+                  {titleSpan}
+                  {props.isExam && <span style={{ flexShrink: 0, fontSize: 11 }}>✎</span>}
+                </div>
+              );
+            }
+
+            // ② Evento suelto de materia — ghost con borde izquierdo y tinte
+            if (props.isSubjectEvent && !props.isRecurring) {
+              return (
+                <div style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 4,
+                  background: c + '28', borderRadius: 5, overflow: 'hidden',
+                  borderLeft: `3px solid ${c}`, borderTop: `1px solid ${c}44`,
+                  borderRight: `1px solid ${c}44`, borderBottom: `1px solid ${c}44`,
+                  padding: '3px 6px', width: '100%', minWidth: 0,
+                  height: '100%', boxSizing: 'border-box',
+                  color: c, fontSize: 12, fontWeight: 600,
+                }}>
+                  {timeSpan}
+                  {titleSpan}
+                  {props.isExam && <span style={{ flexShrink: 0, fontSize: 11 }}>✎</span>}
+                </div>
+              );
+            }
+
+            // ③ Evento general sin materia — tinte del color + borde izquierdo
+            return (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 4,
+                background: c + '28', borderRadius: 5, overflow: 'hidden',
+                borderLeft: `3px solid ${c}`,
+                padding: '3px 6px', width: '100%', minWidth: 0,
+                height: '100%', boxSizing: 'border-box',
+                color: c, fontSize: 12, fontWeight: 600,
+              }}>
+                {timeSpan}
+                {titleSpan}
+                {props.isExam && <span style={{ flexShrink: 0, fontSize: 11 }}>✎</span>}
+              </div>
+            );
+          }}
           selectable
           selectMirror
+          navLinks
           select={handleDateSelect}
           eventClick={handleEventClick}
           height="auto"
@@ -327,12 +499,24 @@ export function Calendar() {
         />
       </div>
 
+      {/* M-1: guía cuando no hay eventos */}
+      {events.length === 0 && (
+        <p style={{
+          textAlign: 'center', marginTop: 20,
+          fontSize: 13, fontFamily: T.fontUI, color: T.inkMuted,
+        }}>
+          Aún no hay eventos. Hacé clic en un día o en "Nuevo evento" para empezar.
+        </p>
+      )}
+
       {modal && (
         <EventModal
           event={modal.event}
           defaultStart={modal.defaultStart}
           defaultEnd={modal.defaultEnd}
           subjects={subjects}
+          isSaving={isSaving}
+          saveError={saveError}
           onSave={handleSave}
           onDelete={modal.mode === 'edit' ? handleDelete : undefined}
           onClose={() => setModal(null)}

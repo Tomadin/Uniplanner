@@ -1,12 +1,25 @@
 import { useState } from 'react';
 import { T, SUBJECT_COLORS } from '../design/tokens';
 import { SectionTitle, EmptyState } from '../components/ui/Misc';
-import { Button, IconButton } from '../components/ui/Button';
+import { Button, Checkbox, IconButton } from '../components/ui/Button';
 import { useSubjects, useAddSubject, useUpdateSubject, useDeleteSubject } from '../hooks/useSubjects';
 import { useTasks } from '../hooks/useTasks';
-import type { Subject } from '../types';
+import type { Subject, ScheduleSlot } from '../types';
 
 type Filter = 'active' | 'inactive' | 'all';
+
+// ─── Configuración de días ─────────────────────────────────────────────────────
+
+const DAYS_CONFIG = [
+  { label: 'Lunes',     dayOfWeek: 1 as ScheduleSlot['dayOfWeek'] },
+  { label: 'Martes',    dayOfWeek: 2 as ScheduleSlot['dayOfWeek'] },
+  { label: 'Miércoles', dayOfWeek: 3 as ScheduleSlot['dayOfWeek'] },
+  { label: 'Jueves',    dayOfWeek: 4 as ScheduleSlot['dayOfWeek'] },
+  { label: 'Viernes',   dayOfWeek: 5 as ScheduleSlot['dayOfWeek'] },
+  { label: 'Sábado',    dayOfWeek: 6 as ScheduleSlot['dayOfWeek'] },
+];
+
+type DaySlot = { enabled: boolean; start: string; end: string };
 
 // ─── Editor (crear / editar materia) ──────────────────────────────────────────
 
@@ -17,7 +30,7 @@ function SubjectEditor({
   onDelete,
 }: {
   subject?: Subject;
-  onSave: (data: Omit<Subject, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSave: (data: Omit<Subject, 'id' | 'createdAt' | 'updatedAt'>, regenerateEvents?: boolean) => void;
   onCancel: () => void;
   onDelete?: () => void;
 }) {
@@ -25,20 +38,64 @@ function SubjectEditor({
   const [color,    setColor]    = useState(subject?.color ?? SUBJECT_COLORS[0]);
   const [isActive, setIsActive] = useState(subject?.isActive ?? true);
 
-  const valid = name.trim().length > 0;
+  const [slots, setSlots] = useState<DaySlot[]>(() =>
+    DAYS_CONFIG.map(({ dayOfWeek }) => {
+      const ex = subject?.schedule?.find(s => s.dayOfWeek === dayOfWeek);
+      return ex
+        ? { enabled: true,  start: ex.startTime, end: ex.endTime }
+        : { enabled: false, start: '08:00',       end: '10:00'   };
+    })
+  );
+  const [courseEnd,   setCourseEnd]   = useState(subject?.courseEndDate?.slice(0, 10) ?? '');
+  const [regen,       setRegen]       = useState(true);
+  const [confirmDel,  setConfirmDel]  = useState(false);
+
+  const valid       = name.trim().length > 0;
+  const hasSchedule = slots.some(s => s.enabled);
+  const isEditing   = !!subject;
+
+  const updateSlot = (i: number, patch: Partial<DaySlot>) =>
+    setSlots(prev => prev.map((s, j) => j === i ? { ...s, ...patch } : s));
+
+  const submit = () => {
+    if (!valid) return;
+    const schedule: ScheduleSlot[] = DAYS_CONFIG.flatMap(({ dayOfWeek }, i) =>
+      slots[i].enabled
+        ? [{ dayOfWeek, startTime: slots[i].start, endTime: slots[i].end }]
+        : []
+    );
+    const courseEndDate = (hasSchedule && courseEnd)
+      ? new Date(courseEnd).toISOString()
+      : null;
+    onSave({ name: name.trim(), color, isActive, schedule, courseEndDate }, isEditing ? regen : undefined);
+  };
+
+  const INPUT: React.CSSProperties = {
+    padding: '6px 10px', fontSize: 13, fontFamily: T.fontUI,
+    background: T.surfaceAlt, border: `1px solid ${T.line}`,
+    borderRadius: T.r1, color: T.ink, outline: 'none', boxSizing: 'border-box',
+  };
+
+  const LABEL: React.CSSProperties = {
+    fontSize: 11, fontWeight: 600, letterSpacing: 0.7,
+    textTransform: 'uppercase', color: T.inkMuted,
+    fontFamily: T.fontUI, marginBottom: 8, display: 'block',
+  };
 
   return (
     <div style={{
       background: T.surface, border: `2px solid ${T.accent}`,
-      borderRadius: T.r3, padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
+      borderRadius: T.r3, padding: 24, display: 'flex', flexDirection: 'column', gap: 18,
     }}>
+      {/* Nombre */}
       <input
         autoFocus value={name} onChange={e => setName(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && valid) onSave({ name: name.trim(), color, isActive }); if (e.key === 'Escape') onCancel(); }}
+        onKeyDown={e => { if (e.key === 'Enter' && valid) submit(); if (e.key === 'Escape') onCancel(); }}
         placeholder="Nombre de la materia…"
         style={{
           fontSize: 18, fontFamily: T.fontDisplay, background: 'transparent',
-          border: 'none', outline: 'none', color: T.ink, borderBottom: `1px solid ${T.line}`, paddingBottom: 8,
+          border: 'none', outline: 'none', color: T.ink,
+          borderBottom: `1px solid ${T.line}`, paddingBottom: 8,
         }}
       />
 
@@ -53,20 +110,95 @@ function SubjectEditor({
         ))}
       </div>
 
+      {/* Horario del cursado */}
+      <div>
+        <span style={LABEL}>Horario del cursado (opcional)</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px' }}>
+          {DAYS_CONFIG.map((day, i) => (
+            <div key={day.dayOfWeek} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 36 }}>
+              <Checkbox checked={slots[i].enabled} onChange={v => updateSlot(i, { enabled: v })} />
+              <span style={{
+                fontSize: 13, fontFamily: T.fontUI, color: slots[i].enabled ? T.ink : T.inkMuted,
+                width: 72, flexShrink: 0,
+              }}>
+                {day.label}
+              </span>
+              {slots[i].enabled && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    type="time" value={slots[i].start}
+                    onChange={e => updateSlot(i, { start: e.target.value })}
+                    style={{ ...INPUT, width: 88 }}
+                  />
+                  <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI }}>→</span>
+                  <input
+                    type="time" value={slots[i].end}
+                    onChange={e => updateSlot(i, { end: e.target.value })}
+                    style={{ ...INPUT, width: 88 }}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Fecha fin — solo cuando hay algún día activo */}
+        {hasSchedule && (
+          <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 13, fontFamily: T.fontUI, color: T.inkSoft, whiteSpace: 'nowrap' }}>
+              Fin del cursado:
+            </span>
+            <input
+              type="date" value={courseEnd}
+              onChange={e => setCourseEnd(e.target.value)}
+              style={{ ...INPUT, width: 160 }}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Estado activo */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-        <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
-        <span style={{ fontSize: 13, fontFamily: T.fontUI, color: T.inkSoft }}>Materia activa (cuatrimestre actual)</span>
+        <Checkbox checked={isActive} onChange={v => setIsActive(v)} />
+        <span style={{ fontSize: 13, fontFamily: T.fontUI, color: T.inkSoft }}>
+          Materia activa (cuatrimestre actual)
+        </span>
       </label>
 
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        {onDelete && <Button variant="danger" size="sm" onClick={onDelete}>Eliminar</Button>}
-        <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
-        <Button variant="primary" size="sm" disabled={!valid}
-          onClick={() => valid && onSave({ name: name.trim(), color, isActive })}>
-          {subject ? 'Guardar' : 'Crear'}
-        </Button>
-      </div>
+      {/* Toggle regenerar — solo en edición con horario */}
+      {isEditing && hasSchedule && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+          <Checkbox checked={regen} onChange={v => setRegen(v)} />
+          <span style={{ fontSize: 13, fontFamily: T.fontUI, color: T.inkSoft }}>
+            Actualizar eventos del calendario
+          </span>
+        </label>
+      )}
+
+      {/* Confirmación de eliminar inline */}
+      {confirmDel ? (
+        <div style={{
+          padding: '12px 14px', borderRadius: T.r2,
+          background: T.dangerSoft, border: `1px solid ${T.danger}44`,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <span style={{ fontSize: 13, fontFamily: T.fontUI, color: T.ink }}>
+            ¿Eliminar "{subject?.name}"? Se eliminarán también todos sus eventos del calendario. Las tareas quedarán sin materia.
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="danger" size="sm" onClick={onDelete}>Sí, eliminar</Button>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmDel(false)}>Cancelar</Button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          {onDelete && <Button variant="danger" size="sm" onClick={() => setConfirmDel(true)}>Eliminar</Button>}
+          <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
+          <Button variant="primary" size="sm" disabled={!valid} onClick={submit}>
+            {isEditing ? 'Guardar' : 'Crear'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -78,6 +210,7 @@ function SubjectCard({ subject, taskCount, onEdit, onToggleActive }: {
   onEdit: () => void; onToggleActive: () => void;
 }) {
   const [hover, setHover] = useState(false);
+  const hasSchedule = (subject.schedule?.length ?? 0) > 0;
   return (
     <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{
       background: T.surface, border: `1px solid ${T.line}`,
@@ -95,6 +228,11 @@ function SubjectCard({ subject, taskCount, onEdit, onToggleActive }: {
           </div>
           <div style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, marginTop: 4 }}>
             {taskCount} tarea{taskCount !== 1 ? 's' : ''} activa{taskCount !== 1 ? 's' : ''}
+            {hasSchedule && (
+              <span style={{ marginLeft: 8, color: T.accentInk }}>
+                · {subject.schedule!.length} día{subject.schedule!.length !== 1 ? 's' : ''} de clase
+              </span>
+            )}
           </div>
         </div>
         <IconButton icon="pencil" size={28} onClick={onEdit} />
@@ -144,7 +282,6 @@ export function Subjects() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {/* Filtro */}
           <div style={{ display: 'flex', background: T.surfaceAlt, padding: 3, borderRadius: T.rFull, gap: 2 }}>
             {(['active','inactive','all'] as Filter[]).map((v, i) => {
               const labels = ['Activas','Anteriores','Todas'];
@@ -167,11 +304,14 @@ export function Subjects() {
         display: 'grid', gap: 16,
         gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
       }}>
+        {/* Editor de creación — ocupa todo el ancho */}
         {adding && (
-          <SubjectEditor
-            onSave={(data) => { addSubject.mutate(data); setAdding(false); }}
-            onCancel={() => setAdding(false)}
-          />
+          <div style={{ gridColumn: '1 / -1' }}>
+            <SubjectEditor
+              onSave={(data) => { addSubject.mutate(data); setAdding(false); }}
+              onCancel={() => setAdding(false)}
+            />
+          </div>
         )}
 
         {filtered.length === 0 && !adding && (
@@ -183,16 +323,21 @@ export function Subjects() {
         {filtered.map(s => {
           if (editingId === s.id) {
             return (
-              <SubjectEditor key={s.id} subject={s}
-                onSave={(data) => { updateSubject.mutate({ id: s.id, changes: data }); setEditingId(null); }}
-                onCancel={() => setEditingId(null)}
-                onDelete={() => {
-                  if (confirm(`¿Eliminar "${s.name}"? Las tareas asociadas quedarán sin materia.`)) {
+              // Editor de edición — ocupa todo el ancho
+              <div key={s.id} style={{ gridColumn: '1 / -1' }}>
+                <SubjectEditor
+                  subject={s}
+                  onSave={(data, regenerateEvents) => {
+                    updateSubject.mutate({ id: s.id, changes: data, regenerateEvents });
+                    setEditingId(null);
+                  }}
+                  onCancel={() => setEditingId(null)}
+                  onDelete={() => {
                     deleteSubject.mutate(s.id);
                     setEditingId(null);
-                  }
-                }}
-              />
+                  }}
+                />
+              </div>
             );
           }
           return (

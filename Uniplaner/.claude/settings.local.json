@@ -11,7 +11,14 @@
       "Bash(npx vite *)",
       "Bash(npm run *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git remote *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh repo *)",
+      "PowerShell(gh repo *)",
+      "Bash(git branch *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)"
     ]
   }
 }
