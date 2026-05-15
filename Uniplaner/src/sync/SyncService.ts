@@ -16,6 +16,7 @@ const EMPTY_DRIVE_FILE: Omit<DriveDataFile, 'exportedAt'> = {
   tasks: [],
   events: [],
   quickNotes: [],
+  personalLists: [],
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

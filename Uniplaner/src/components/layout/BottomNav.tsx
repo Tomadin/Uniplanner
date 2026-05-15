@@ -1,13 +1,14 @@
 import { T } from '../../design/tokens';
 import { Icon } from '../ui/Icon';
 
-type Route = 'dashboard' | 'calendar' | 'tasks-table' | 'tasks-tree' | 'subjects';
+type Route = 'dashboard' | 'calendar' | 'tasks-table' | 'tasks-tree' | 'subjects' | 'personal';
 
 const NAV = [
-  { id: 'dashboard',   label: 'Inicio',   icon: 'home'     },
-  { id: 'calendar',    label: 'Agenda',   icon: 'calendar' },
-  { id: 'tasks-table', label: 'Tareas',   icon: 'list'     },
-  { id: 'subjects',    label: 'Materias', icon: 'book'     },
+  { id: 'dashboard',   label: 'Inicio',    icon: 'home'     },
+  { id: 'calendar',    label: 'Agenda',    icon: 'calendar' },
+  { id: 'tasks-table', label: 'Tareas',    icon: 'list'     },
+  { id: 'subjects',    label: 'Materias',  icon: 'book'     },
+  { id: 'personal',    label: 'Personal',  icon: 'heart'    },
 ] as const;
 
 export function BottomNav({ active, onNavigate }: { active: Route; onNavigate: (r: Route) => void }) {

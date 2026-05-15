@@ -7,14 +7,15 @@ import { useAuthStore } from '../../auth/authStore';
 import { useSyncStore } from '../../store/syncStore';
 import { formatDate } from '../../utils/date';
 
-type Route = 'dashboard' | 'calendar' | 'tasks-table' | 'tasks-tree' | 'subjects';
+type Route = 'dashboard' | 'calendar' | 'tasks-table' | 'tasks-tree' | 'subjects' | 'personal';
 
 const NAV = [
-  { id: 'dashboard',   label: 'Inicio',      icon: 'home'     },
-  { id: 'calendar',    label: 'Agenda',      icon: 'calendar' },
-  { id: 'tasks-table', label: 'Tareas',      icon: 'list'     },
-  { id: 'tasks-tree',  label: 'Por materia', icon: 'tree'     },
-  { id: 'subjects',    label: 'Materias',    icon: 'book'     },
+  { id: 'dashboard',   label: 'Inicio',        icon: 'home'     },
+  { id: 'calendar',    label: 'Agenda',        icon: 'calendar' },
+  { id: 'tasks-table', label: 'Tareas',        icon: 'list'     },
+  { id: 'tasks-tree',  label: 'Por materia',   icon: 'tree'     },
+  { id: 'subjects',    label: 'Materias',      icon: 'book'     },
+  { id: 'personal',    label: 'Vida personal', icon: 'heart'    },
 ] as const;
 
 interface SidebarProps {

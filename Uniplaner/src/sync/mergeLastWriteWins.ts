@@ -1,4 +1,4 @@
-import type { DriveDataFile, Subject, Task, Event, QuickNote } from '../types';
+import type { DriveDataFile, Subject, Task, Event, QuickNote, PersonalList } from '../types';
 import type { LocalSnapshot } from '../db/db';
 
 // ─── Utilidad pura de merge (sec. 3.4 y 6.4) ─────────────────────────────────
@@ -67,10 +67,11 @@ export function mergeLastWriteWins(
   return {
     version:    remote.version ?? 1,
     exportedAt: new Date().toISOString(),
-    subjects:   mergeCollection<Subject>   (remote.subjects    ?? [], local.subjects,   ref),
-    tasks:      mergeCollection<Task>      (remote.tasks       ?? [], local.tasks,      ref),
-    events:     mergeCollection<Event>     (remote.events      ?? [], local.events,     ref),
-    quickNotes: mergeCollection<QuickNote> (remote.quickNotes  ?? [], local.quickNotes, ref),
+    subjects:      mergeCollection<Subject>      (remote.subjects      ?? [], local.subjects,      ref),
+    tasks:         mergeCollection<Task>         (remote.tasks         ?? [], local.tasks,         ref),
+    events:        mergeCollection<Event>        (remote.events        ?? [], local.events,         ref),
+    quickNotes:    mergeCollection<QuickNote>    (remote.quickNotes    ?? [], local.quickNotes,    ref),
+    personalLists: mergeCollection<PersonalList> (remote.personalLists ?? [], local.personalLists, ref),
   };
 }
 

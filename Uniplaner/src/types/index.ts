@@ -56,6 +56,20 @@ export interface QuickNote {
   updatedAt: string;
 }
 
+export interface PersonalItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface PersonalList {
+  id: string;
+  name: string;
+  items: PersonalItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Estructura del archivo Drive ─────────────────────────────────────────────
 
 export interface DriveDataFile {
@@ -65,6 +79,7 @@ export interface DriveDataFile {
   tasks: Task[];
   events: Event[];
   quickNotes: QuickNote[];
+  personalLists: PersonalList[];
 }
 
 // ─── Autenticación ────────────────────────────────────────────────────────────

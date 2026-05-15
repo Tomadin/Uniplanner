@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Subject, Task, Event, QuickNote } from '../types';
+import type { Subject, Task, Event, QuickNote, PersonalList } from '../types';
 
 // ─── Instancia Dexie (sec. 4.1) ───────────────────────────────────────────────
 
@@ -8,6 +8,7 @@ class UniPlannerDB extends Dexie {
   tasks!: EntityTable<Task, 'id'>;
   events!: EntityTable<Event, 'id'>;
   quickNotes!: EntityTable<QuickNote, 'id'>;
+  personalLists!: EntityTable<PersonalList, 'id'>;
 
   constructor() {
     super('UniPlanner');
@@ -16,6 +17,13 @@ class UniPlannerDB extends Dexie {
       tasks:      '&id, subjectId, parentTaskId, status, dueDate, updatedAt',
       events:     '&id, subjectId, startTime, isExam, updatedAt',
       quickNotes: '&id, updatedAt',
+    });
+    this.version(2).stores({
+      subjects:      '&id, isActive, updatedAt',
+      tasks:         '&id, subjectId, parentTaskId, status, dueDate, updatedAt',
+      events:        '&id, subjectId, startTime, isExam, updatedAt',
+      quickNotes:    '&id, updatedAt',
+      personalLists: '&id, updatedAt',
     });
   }
 }
@@ -29,25 +37,28 @@ export interface LocalSnapshot {
   tasks: Task[];
   events: Event[];
   quickNotes: QuickNote[];
+  personalLists: PersonalList[];
 }
 
 export async function exportAll(): Promise<LocalSnapshot> {
-  const [subjects, tasks, events, quickNotes] = await Promise.all([
+  const [subjects, tasks, events, quickNotes, personalLists] = await Promise.all([
     db.subjects.toArray(),
     db.tasks.toArray(),
     db.events.toArray(),
     db.quickNotes.toArray(),
+    db.personalLists.toArray(),
   ]);
-  return { subjects, tasks, events, quickNotes };
+  return { subjects, tasks, events, quickNotes, personalLists };
 }
 
 export async function importAll(data: LocalSnapshot): Promise<void> {
-  await db.transaction('rw', [db.subjects, db.tasks, db.events, db.quickNotes], async () => {
+  await db.transaction('rw', [db.subjects, db.tasks, db.events, db.quickNotes, db.personalLists], async () => {
     await Promise.all([
       db.subjects.bulkPut(data.subjects),
       db.tasks.bulkPut(data.tasks),
       db.events.bulkPut(data.events),
       db.quickNotes.bulkPut(data.quickNotes),
+      db.personalLists.bulkPut(data.personalLists ?? []),
     ]);
   });
 }

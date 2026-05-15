@@ -12,13 +12,14 @@ import { Calendar } from './pages/Calendar';
 import { TasksTable } from './pages/TasksTable';
 import { TasksTree } from './pages/TasksTree';
 import { Subjects } from './pages/Subjects';
+import { PersonalLife } from './pages/PersonalLife';
 import { T } from './design/tokens';
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 30, gcTime: 1000 * 60 * 5 } },
 });
 
-type Route = 'dashboard' | 'calendar' | 'tasks-table' | 'tasks-tree' | 'subjects';
+type Route = 'dashboard' | 'calendar' | 'tasks-table' | 'tasks-tree' | 'subjects' | 'personal';
 
 // ─── Inner app (necesita QueryClientProvider ya montado) ──────────────────────
 
@@ -44,6 +45,7 @@ function AppInner() {
              : route === 'tasks-table' ? <TasksTable />
              : route === 'tasks-tree'  ? <TasksTree />
              : route === 'subjects'    ? <Subjects />
+             : route === 'personal'    ? <PersonalLife />
              : null;
 
   if (mobile) {
