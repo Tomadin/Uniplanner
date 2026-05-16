@@ -10,38 +10,49 @@ import type { LocalSnapshot } from '../db/db';
 type Identifiable = { id: string; updatedAt: string };
 
 /**
- * Merge con detección de eliminaciones.
+ * Snapshot de los IDs que estaban en Drive en el último sync exitoso de este
+ * dispositivo. Se persiste en localStorage y se usa para distinguir entre
+ * "eliminé este ítem" y "nunca lo tuve porque vino de otro dispositivo".
+ */
+export interface SyncSnapshot {
+  subjectIds:      string[];
+  taskIds:         string[];
+  eventIds:        string[];
+  quickNoteIds:    string[];
+  personalListIds: string[];
+}
+
+/**
+ * Merge con detección de eliminaciones basada en IDs reales.
  *
- * Si un item existe en remote pero NO en local, usamos `localLastSyncRef`
- * (el exportedAt de Drive en el ÚLTIMO sync exitoso de ESTE dispositivo) como referencia:
- *   - item.updatedAt > localLastSyncRef  → llegó de otro dispositivo después de nuestro
- *                                          último sync → incluir
- *   - item.updatedAt ≤ localLastSyncRef  → ya lo teníamos en el último sync y lo borramos
- *                                          localmente → descartar
+ * Para cada ítem de remote que NO está en local:
+ *   - Su ID estaba en lastSyncedIds → lo vimos en Drive y ahora no está en local
+ *                                     → lo eliminamos localmente → descartar
+ *   - Su ID NO estaba en lastSyncedIds (o lastSyncedIds es null) → es nuevo de
+ *                                     otro dispositivo, nunca lo vimos → incluir
  *
- * Si localLastSyncRef es null (dispositivo nunca sincronizó), se usa epoch como ref,
- * lo que garantiza que todos los ítems de Drive se incluyan sin descartarlos como
- * eliminaciones (un dispositivo nuevo nunca puede haber "eliminado" nada).
+ * Usar IDs reales en lugar de timestamps evita el falso positivo donde un ítem
+ * con updatedAt antiguo se descarta porque su fecha es menor al exportedAt del
+ * último sync, aunque ese ítem nunca hubiera estado en Drive en ese momento.
  */
 function mergeCollection<T extends Identifiable>(
   remote: T[],
   local: T[],
-  remoteExportedAt: string,
+  lastSyncedIds: Set<string> | null,
 ): T[] {
-  const merged  = new Map<string, T>();
+  const merged   = new Map<string, T>();
   const localIds = new Set(local.map(item => item.id));
 
   for (const item of remote) {
     if (localIds.has(item.id)) {
       // Existe en ambos lados: LWW (se resuelve abajo con la pasada local)
       merged.set(item.id, item);
-    } else if (item.updatedAt > remoteExportedAt) {
-      // No está en local PERO es más nuevo que la última exportación:
-      // vino de otro dispositivo después del último sync → incluir
+    } else if (lastSyncedIds === null || !lastSyncedIds.has(item.id)) {
+      // No está en local Y (primer sync O no estaba en nuestro último snapshot)
+      // → llegó de otro dispositivo → incluir
       merged.set(item.id, item);
     }
-    // Caso restante: estaba en Drive cuando se hizo el último sync pero ya no
-    // está en local → fue eliminado localmente → no incluir
+    // else: estaba en nuestro último snapshot y ya no está en local → eliminado localmente
   }
 
   for (const item of local) {
@@ -61,41 +72,22 @@ function mergeCollection<T extends Identifiable>(
  *   `updatedAt` más reciente.
  * - Objetos únicos de cualquier lado se incluyen sin modificación.
  * - No muta los argumentos de entrada.
+ *
+ * @param lastSync  Snapshot de IDs del último sync de este dispositivo.
+ *                  null = primer sync → incluir todos los ítems de Drive.
  */
 export function mergeLastWriteWins(
   remote: DriveDataFile,
   local: LocalSnapshot,
-  localLastSyncRef: string | null,
+  lastSync: SyncSnapshot | null,
 ): DriveDataFile {
-  const ref = localLastSyncRef ?? new Date(0).toISOString();
-
   return {
     version:    remote.version ?? 1,
     exportedAt: new Date().toISOString(),
-    subjects:      mergeCollection<Subject>      (remote.subjects      ?? [], local.subjects,      ref),
-    tasks:         mergeCollection<Task>         (remote.tasks         ?? [], local.tasks,         ref),
-    events:        mergeCollection<Event>        (remote.events        ?? [], local.events,         ref),
-    quickNotes:    mergeCollection<QuickNote>    (remote.quickNotes    ?? [], local.quickNotes,    ref),
-    personalLists: mergeCollection<PersonalList> (remote.personalLists ?? [], local.personalLists, ref),
+    subjects:      mergeCollection<Subject>      (remote.subjects      ?? [], local.subjects,      lastSync ? new Set(lastSync.subjectIds)      : null),
+    tasks:         mergeCollection<Task>         (remote.tasks         ?? [], local.tasks,         lastSync ? new Set(lastSync.taskIds)         : null),
+    events:        mergeCollection<Event>        (remote.events        ?? [], local.events,         lastSync ? new Set(lastSync.eventIds)        : null),
+    quickNotes:    mergeCollection<QuickNote>    (remote.quickNotes    ?? [], local.quickNotes,    lastSync ? new Set(lastSync.quickNoteIds)    : null),
+    personalLists: mergeCollection<PersonalList> (remote.personalLists ?? [], local.personalLists, lastSync ? new Set(lastSync.personalListIds) : null),
   };
 }
-
-// ─── Ejemplo de uso (para tests y documentación) ─────────────────────────────
-//
-// const remote: DriveDataFile = {
-//   version: 1, exportedAt: '2026-05-01T10:00:00Z',
-//   subjects: [{ id: 'abc', name: 'Anatomía', color: '#D98880',
-//                isActive: true, createdAt: '2026-01-01T00:00:00Z',
-//                updatedAt: '2026-05-01T09:00:00Z' }],
-//   tasks: [], events: [], quickNotes: [],
-// };
-//
-// const local: LocalSnapshot = {
-//   subjects: [{ id: 'abc', name: 'Anatomía II', color: '#D98880',
-//                isActive: true, createdAt: '2026-01-01T00:00:00Z',
-//                updatedAt: '2026-05-01T10:30:00Z' }],  // ← más reciente, gana
-//   tasks: [], events: [], quickNotes: [],
-// };
-//
-// const result = mergeLastWriteWins(remote, local);
-// // result.subjects[0].name === 'Anatomía II'  ✓

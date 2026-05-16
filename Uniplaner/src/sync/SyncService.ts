@@ -1,6 +1,6 @@
 import { driveService, DriveAuthError } from '../drive/DriveService';
 import { exportAll, importAll } from '../db/db';
-import { mergeLastWriteWins } from './mergeLastWriteWins';
+import { mergeLastWriteWins, type SyncSnapshot } from './mergeLastWriteWins';
 import type { DriveDataFile } from '../types';
 
 // ─── Constantes de retry (sec. 3.5) ──────────────────────────────────────────
@@ -10,14 +10,24 @@ const BASE_DELAY_MS    = 1_000;
 const MAX_DELAY_MS     = 512_000;  // ~8.5 minutos
 const MAX_AUTH_RETRIES = 2;
 
-const LOCAL_SYNC_REF_KEY = 'uniplanner-last-sync-ref';
+const LOCAL_SYNC_SNAPSHOT_KEY = 'uniplanner-sync-snapshot';
 
-function getLocalSyncRef(): string | null {
-  return localStorage.getItem(LOCAL_SYNC_REF_KEY);
+function getLocalSyncSnapshot(): SyncSnapshot | null {
+  const raw = localStorage.getItem(LOCAL_SYNC_SNAPSHOT_KEY);
+  if (!raw) return null;
+  try { return JSON.parse(raw) as SyncSnapshot; }
+  catch { return null; }
 }
 
-function setLocalSyncRef(exportedAt: string): void {
-  localStorage.setItem(LOCAL_SYNC_REF_KEY, exportedAt);
+function setLocalSyncSnapshot(remote: DriveDataFile): void {
+  const snap: SyncSnapshot = {
+    subjectIds:      (remote.subjects      ?? []).map(s => s.id),
+    taskIds:         (remote.tasks         ?? []).map(t => t.id),
+    eventIds:        (remote.events        ?? []).map(e => e.id),
+    quickNoteIds:    (remote.quickNotes    ?? []).map(n => n.id),
+    personalListIds: (remote.personalLists ?? []).map(l => l.id),
+  };
+  localStorage.setItem(LOCAL_SYNC_SNAPSHOT_KEY, JSON.stringify(snap));
 }
 
 const EMPTY_DRIVE_FILE: Omit<DriveDataFile, 'exportedAt'> = {
@@ -151,9 +161,9 @@ export class SyncService {
     const remote = await driveService.downloadFile(this.fileId, token);
     if (!remote) return;
     const local  = await exportAll();
-    const merged = mergeLastWriteWins(remote, local, getLocalSyncRef());
+    const merged = mergeLastWriteWins(remote, local, getLocalSyncSnapshot());
     await importAll(merged);
-    setLocalSyncRef(remote.exportedAt);
+    setLocalSyncSnapshot(remote);
   }
 
   /** Ejecuta el ciclo completo de guardado (sec. 3.4). */
@@ -177,11 +187,11 @@ export class SyncService {
     const local = await exportAll();
 
     // Paso 4: Merge Last-Write-Wins
-    const merged = mergeLastWriteWins(remote, local, getLocalSyncRef());
+    const merged = mergeLastWriteWins(remote, local, getLocalSyncSnapshot());
 
     // Paso 5: Importar merged a Dexie (actualiza local con entidades remotas más nuevas)
     await importAll(merged);
-    setLocalSyncRef(remote.exportedAt);
+    setLocalSyncSnapshot(remote);
 
     // Paso 6: Subir resultado a Drive
     if (this.fileId) {
