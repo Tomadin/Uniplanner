@@ -12,13 +12,16 @@ type Identifiable = { id: string; updatedAt: string };
 /**
  * Merge con detección de eliminaciones.
  *
- * Si un item existe en remote pero NO en local, usamos `remoteExportedAt`
- * (el timestamp de la última subida a Drive) como referencia:
- *   - item.updatedAt > remoteExportedAt  → item nuevo de otro dispositivo → incluir
- *   - item.updatedAt ≤ remoteExportedAt  → item ya estaba en la última sync y
- *                                          fue eliminado localmente → descartar
+ * Si un item existe en remote pero NO en local, usamos `localLastSyncRef`
+ * (el exportedAt de Drive en el ÚLTIMO sync exitoso de ESTE dispositivo) como referencia:
+ *   - item.updatedAt > localLastSyncRef  → llegó de otro dispositivo después de nuestro
+ *                                          último sync → incluir
+ *   - item.updatedAt ≤ localLastSyncRef  → ya lo teníamos en el último sync y lo borramos
+ *                                          localmente → descartar
  *
- * Esto evita que eliminaciones locales sean sobreescritas por el sync siguiente.
+ * Si localLastSyncRef es null (dispositivo nunca sincronizó), se usa epoch como ref,
+ * lo que garantiza que todos los ítems de Drive se incluyan sin descartarlos como
+ * eliminaciones (un dispositivo nuevo nunca puede haber "eliminado" nada).
  */
 function mergeCollection<T extends Identifiable>(
   remote: T[],
@@ -62,20 +65,9 @@ function mergeCollection<T extends Identifiable>(
 export function mergeLastWriteWins(
   remote: DriveDataFile,
   local: LocalSnapshot,
+  localLastSyncRef: string | null,
 ): DriveDataFile {
-  // Si el local está completamente vacío, es un dispositivo nuevo que nunca sincronizó.
-  // Usar epoch como ref para que todos los ítems de Drive se incluyan sin descartarlos
-  // como "eliminaciones locales" (la lógica de eliminación no aplica en primer sync).
-  const isFirstSync =
-    local.subjects.length === 0 &&
-    local.tasks.length === 0 &&
-    local.events.length === 0 &&
-    local.quickNotes.length === 0 &&
-    local.personalLists.length === 0;
-
-  const ref = isFirstSync
-    ? new Date(0).toISOString()
-    : (remote.exportedAt ?? new Date(0).toISOString());
+  const ref = localLastSyncRef ?? new Date(0).toISOString();
 
   return {
     version:    remote.version ?? 1,

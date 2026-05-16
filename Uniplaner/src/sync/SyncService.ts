@@ -10,6 +10,16 @@ const BASE_DELAY_MS    = 1_000;
 const MAX_DELAY_MS     = 512_000;  // ~8.5 minutos
 const MAX_AUTH_RETRIES = 2;
 
+const LOCAL_SYNC_REF_KEY = 'uniplanner-last-sync-ref';
+
+function getLocalSyncRef(): string | null {
+  return localStorage.getItem(LOCAL_SYNC_REF_KEY);
+}
+
+function setLocalSyncRef(exportedAt: string): void {
+  localStorage.setItem(LOCAL_SYNC_REF_KEY, exportedAt);
+}
+
 const EMPTY_DRIVE_FILE: Omit<DriveDataFile, 'exportedAt'> = {
   version: 1,
   subjects: [],
@@ -141,8 +151,9 @@ export class SyncService {
     const remote = await driveService.downloadFile(this.fileId, token);
     if (!remote) return;
     const local  = await exportAll();
-    const merged = mergeLastWriteWins(remote, local);
+    const merged = mergeLastWriteWins(remote, local, getLocalSyncRef());
     await importAll(merged);
+    setLocalSyncRef(remote.exportedAt);
   }
 
   /** Ejecuta el ciclo completo de guardado (sec. 3.4). */
@@ -166,10 +177,11 @@ export class SyncService {
     const local = await exportAll();
 
     // Paso 4: Merge Last-Write-Wins
-    const merged = mergeLastWriteWins(remote, local);
+    const merged = mergeLastWriteWins(remote, local, getLocalSyncRef());
 
     // Paso 5: Importar merged a Dexie (actualiza local con entidades remotas más nuevas)
     await importAll(merged);
+    setLocalSyncRef(remote.exportedAt);
 
     // Paso 6: Subir resultado a Drive
     if (this.fileId) {
