@@ -63,7 +63,20 @@ export function mergeLastWriteWins(
   remote: DriveDataFile,
   local: LocalSnapshot,
 ): DriveDataFile {
-  const ref = remote.exportedAt ?? new Date(0).toISOString();
+  // Si el local está completamente vacío, es un dispositivo nuevo que nunca sincronizó.
+  // Usar epoch como ref para que todos los ítems de Drive se incluyan sin descartarlos
+  // como "eliminaciones locales" (la lógica de eliminación no aplica en primer sync).
+  const isFirstSync =
+    local.subjects.length === 0 &&
+    local.tasks.length === 0 &&
+    local.events.length === 0 &&
+    local.quickNotes.length === 0 &&
+    local.personalLists.length === 0;
+
+  const ref = isFirstSync
+    ? new Date(0).toISOString()
+    : (remote.exportedAt ?? new Date(0).toISOString());
+
   return {
     version:    remote.version ?? 1,
     exportedAt: new Date().toISOString(),

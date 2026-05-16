@@ -16,7 +16,7 @@ import { PersonalLife } from './pages/PersonalLife';
 import { T } from './design/tokens';
 
 const qc = new QueryClient({
-  defaultOptions: { queries: { staleTime: 1000 * 30, gcTime: 1000 * 60 * 5 } },
+  defaultOptions: { queries: { staleTime: 0, gcTime: 1000 * 60 * 5 } },
 });
 
 type Route = 'dashboard' | 'calendar' | 'tasks-table' | 'tasks-tree' | 'subjects' | 'personal';

@@ -26,13 +26,28 @@ export function useSync() {
     });
     serviceRef.current = svc;
 
+    let cleanupPeriodic: (() => void) | null = null;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        svc.save().catch(console.error);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     setSyncing(true);
     svc.initialize()
-      .then(() => { setSyncSuccess(); invalidateAll(); })
+      .then(() => {
+        setSyncSuccess();
+        invalidateAll();
+        cleanupPeriodic = svc.schedulePeriodicSync();
+      })
       .catch(() => setSyncError('Error al sincronizar al iniciar.'));
 
-    const cleanup = svc.schedulePeriodicSync();
-    return cleanup;
+    return () => {
+      cleanupPeriodic?.();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 

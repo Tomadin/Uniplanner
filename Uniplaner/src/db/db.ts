@@ -53,12 +53,22 @@ export async function exportAll(): Promise<LocalSnapshot> {
 
 export async function importAll(data: LocalSnapshot): Promise<void> {
   await db.transaction('rw', [db.subjects, db.tasks, db.events, db.quickNotes, db.personalLists], async () => {
+    // clear() + bulkAdd() en lugar de bulkPut() para que el resultado del merge sea
+    // el estado definitivo de Dexie. bulkPut() solo hacía upsert y dejaba ítems
+    // "fantasmas" que el merge había descartado, los cuales contaminaban syncs futuros.
     await Promise.all([
-      db.subjects.bulkPut(data.subjects),
-      db.tasks.bulkPut(data.tasks),
-      db.events.bulkPut(data.events),
-      db.quickNotes.bulkPut(data.quickNotes),
-      db.personalLists.bulkPut(data.personalLists ?? []),
+      db.subjects.clear(),
+      db.tasks.clear(),
+      db.events.clear(),
+      db.quickNotes.clear(),
+      db.personalLists.clear(),
+    ]);
+    await Promise.all([
+      db.subjects.bulkAdd(data.subjects),
+      db.tasks.bulkAdd(data.tasks),
+      db.events.bulkAdd(data.events),
+      db.quickNotes.bulkAdd(data.quickNotes),
+      db.personalLists.bulkAdd(data.personalLists ?? []),
     ]);
   });
 }
