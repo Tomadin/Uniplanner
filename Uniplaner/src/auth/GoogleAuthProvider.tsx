@@ -19,12 +19,27 @@ const USERINFO_ENDPOINT = 'https://www.googleapis.com/oauth2/v3/userinfo';
 
 // ─── Declaraciones de tipos GIS (no hay @types oficial) ───────────────────────
 
+interface OneTapNotification {
+  isNotDisplayed: () => boolean;
+  isSkippedMoment: () => boolean;
+}
+
 declare global {
   interface Window {
     google?: {
       accounts: {
         oauth2: {
           initTokenClient: (config: GisTokenClientConfig) => GisTokenClient;
+        };
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (r: { credential: string }) => void;
+            auto_select?: boolean;
+            use_fedcm_for_prompt?: boolean;
+          }) => void;
+          prompt: (callback?: (n: OneTapNotification) => void) => void;
+          cancel: () => void;
         };
       };
     };
@@ -135,11 +150,37 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
         },
       });
 
-      // Intentar auto-login silencioso si hay email guardado del login anterior
+      // One Tap: auto-login silencioso via FedCM (sin depender de cookies de sesión)
+      const parseJwt = (jwt: string) => {
+        const b64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padded = b64.padEnd(b64.length + (4 - b64.length % 4) % 4, '=');
+        return JSON.parse(atob(padded));
+      };
+
+      window.google!.accounts.id.initialize({
+        client_id: clientId,
+        auto_select: true,
+        use_fedcm_for_prompt: true,
+        callback: (response: { credential: string }) => {
+          const p = parseJwt(response.credential);
+          setUser({ id: p.sub, name: p.name, email: p.email, picture: p.picture });
+          // Con FedCM activo, el token client puede renovar silenciosamente
+          tokenClientRef.current?.requestAccessToken({ prompt: '', hint: p.email });
+        },
+      });
+
       const savedEmail = localStorage.getItem('up-user-email');
       if (savedEmail) {
-        autoLoginTimeoutRef.current = setTimeout(() => setInitializing(false), 5000);
-        tokenClientRef.current?.requestAccessToken({ prompt: '', hint: savedEmail });
+        autoLoginTimeoutRef.current = setTimeout(() => setInitializing(false), 6000);
+        window.google!.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            setInitializing(false);
+            if (autoLoginTimeoutRef.current) {
+              clearTimeout(autoLoginTimeoutRef.current);
+              autoLoginTimeoutRef.current = null;
+            }
+          }
+        });
       } else {
         setInitializing(false);
       }

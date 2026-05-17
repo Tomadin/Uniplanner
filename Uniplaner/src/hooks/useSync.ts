@@ -27,10 +27,12 @@ export function useSync() {
     serviceRef.current = svc;
 
     let cleanupPeriodic: (() => void) | null = null;
+    let visibilityTimer: ReturnType<typeof setTimeout> | null = null;
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        svc.save().catch(console.error);
+        if (visibilityTimer) clearTimeout(visibilityTimer);
+        visibilityTimer = setTimeout(() => { svc.save().catch(console.error); }, 1000);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
@@ -52,6 +54,7 @@ export function useSync() {
 
     return () => {
       cleanupPeriodic?.();
+      if (visibilityTimer) clearTimeout(visibilityTimer);
       document.removeEventListener('visibilitychange', handleVisibility);
       unsubMutations();
     };
