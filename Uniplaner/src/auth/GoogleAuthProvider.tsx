@@ -113,6 +113,7 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId) {
       console.error('[Auth] VITE_GOOGLE_CLIENT_ID no está configurado en .env');
+      setInitializing(false);
       return;
     }
 
@@ -154,6 +155,10 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
     script.async = true;
     script.defer = true;
     script.onload = init;
+    script.onerror = () => {
+      console.error('[Auth] No se pudo cargar el script de Google Identity Services');
+      setInitializing(false);
+    };
     document.body.appendChild(script);
 
     return () => {
