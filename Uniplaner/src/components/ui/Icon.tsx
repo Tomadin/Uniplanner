@@ -31,6 +31,7 @@ const PATHS: Record<string, React.ReactNode> = {
   trash:     <><path d="M4 6h12M8 6V4h4v2M6 6l1 10h6l1-10"/></>,
   google:    <><path d="M17 10.2c0-.65-.06-1.28-.17-1.88H10v3.56h3.92c-.17.9-.68 1.67-1.45 2.18v1.82h2.35c1.37-1.27 2.18-3.13 2.18-5.68z" fill="#4285F4" stroke="none"/><path d="M10 17.5c1.96 0 3.61-.65 4.82-1.76l-2.35-1.82c-.65.44-1.49.7-2.47.7-1.9 0-3.5-1.28-4.08-3H3.47v1.87A7.5 7.5 0 0010 17.5z" fill="#34A853" stroke="none"/><path d="M5.92 11.62A4.5 4.5 0 015.68 10c0-.56.1-1.1.24-1.62V6.51H3.47A7.5 7.5 0 002.5 10c0 1.21.29 2.36.97 3.49l2.45-1.87z" fill="#FBBC04" stroke="none"/><path d="M10 5.46c1.07 0 2.03.37 2.79 1.09l2.09-2.09A7.5 7.5 0 0010 2.5a7.5 7.5 0 00-6.53 4.01l2.45 1.87C6.5 6.74 8.1 5.46 10 5.46z" fill="#EA4335" stroke="none"/></>,
   heart:     <><path d="M10 16.5s-6-3.5-6-8a3.5 3.5 0 016-2.5 3.5 3.5 0 016 2.5c0 4.5-6 8-6 8z"/></>,
+  upload:    <><path d="M10 13V3M6 7l4-4 4 4M4 17h12"/></>,
 };
 
 export function Icon({ name, size = 20, stroke = 'currentColor', strokeWidth = 1.6, style }: IconProps) {

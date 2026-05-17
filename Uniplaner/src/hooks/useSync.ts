@@ -8,7 +8,7 @@ import { useSyncStore } from '../store/syncStore';
 export function useSync() {
   const { isAuthenticated } = useAuthStore();
   const { refreshTokenSilently } = useAuth();
-  const { setSyncing, setSyncSuccess, setSyncError } = useSyncStore();
+  const { setSyncing, setSyncSuccess, setSyncError, setDirty } = useSyncStore();
   const qc = useQueryClient();
   const serviceRef = useRef<SyncService | null>(null);
 
@@ -35,6 +35,12 @@ export function useSync() {
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
+    const unsubMutations = qc.getMutationCache().subscribe((event) => {
+      if (event.type === 'updated' && event.mutation?.state.status === 'success') {
+        setDirty(true);
+      }
+    });
+
     setSyncing(true);
     svc.initialize()
       .then(() => {
@@ -47,6 +53,7 @@ export function useSync() {
     return () => {
       cleanupPeriodic?.();
       document.removeEventListener('visibilitychange', handleVisibility);
+      unsubMutations();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
