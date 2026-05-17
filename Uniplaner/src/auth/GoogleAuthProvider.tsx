@@ -64,14 +64,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function GoogleAuthProvider({ children }: { children: React.ReactNode }) {
-  const { setUser, setAccessToken, clearAuth, isTokenValid } = useAuthStore();
+  const { setUser, setAccessToken, clearAuth, isTokenValid, setInitializing } = useAuthStore();
 
   const tokenClientRef = useRef<GisTokenClient | null>(null);
-  // Cola de promesas pendientes de refresh
   const pendingRefreshRef = useRef<Array<{
     resolve: (token: string) => void;
     reject: (err: Error) => void;
   }>>([]);
+  const autoLoginTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchUserInfo = useCallback(
     async (accessToken: string) => {
@@ -95,13 +95,15 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
       }
 
       setAccessToken(response.access_token, response.expires_in);
-
-      // Obtener perfil del usuario en paralelo, sin bloquear el token
       fetchUserInfo(response.access_token).catch(console.warn);
-
-      // Resolver todas las promesas pendientes de refresh
       pendingRefreshRef.current.forEach(({ resolve }) => resolve(response.access_token));
       pendingRefreshRef.current = [];
+
+      setInitializing(false);
+      if (autoLoginTimeoutRef.current) {
+        clearTimeout(autoLoginTimeoutRef.current);
+        autoLoginTimeoutRef.current = null;
+      }
     },
     [setAccessToken, fetchUserInfo],
   );
@@ -124,8 +126,22 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
           const error = new Error(err.type);
           pendingRefreshRef.current.forEach(({ reject }) => reject(error));
           pendingRefreshRef.current = [];
+          setInitializing(false);
+          if (autoLoginTimeoutRef.current) {
+            clearTimeout(autoLoginTimeoutRef.current);
+            autoLoginTimeoutRef.current = null;
+          }
         },
       });
+
+      // Intentar auto-login silencioso si hay email guardado del login anterior
+      const savedEmail = localStorage.getItem('up-user-email');
+      if (savedEmail) {
+        autoLoginTimeoutRef.current = setTimeout(() => setInitializing(false), 5000);
+        tokenClientRef.current?.requestAccessToken({ prompt: '', hint: savedEmail });
+      } else {
+        setInitializing(false);
+      }
     };
 
     if (window.google?.accounts?.oauth2) {
