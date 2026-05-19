@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { RRule } from 'rrule';
 import { useAuthStore } from '../auth/authStore';
 import { T, PRIORITY_META } from '../design/tokens';
@@ -216,7 +217,8 @@ function NoteRow({ text, onDelete }: { text: string; onDelete: () => void }) {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-export function Dashboard({ onNavigate }: { onNavigate: (r: string) => void }) {
+export function Dashboard() {
+  const navigate = useNavigate();
   const now = new Date();
   const { user }              = useAuthStore();
   const { data: subjects = [] } = useSubjects();
@@ -289,7 +291,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: string) => void }) {
 
           {/* Próximas tareas */}
           <Card padding={24}>
-            <SectionHeader title="Próximas tareas" action="Ver todas" onAction={() => onNavigate('tasks-table')} />
+            <SectionHeader title="Próximas tareas" action="Ver todas" onAction={() => navigate('/tasks-table')} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {upcoming.length === 0
                 ? <EmptyState text="No hay tareas próximas. ¡Respirá!" />
@@ -300,7 +302,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: string) => void }) {
 
           {/* Agenda de hoy */}
           <Card padding={24}>
-            <SectionHeader title="Agenda de hoy" action="Calendario" onAction={() => onNavigate('calendar')} />
+            <SectionHeader title="Agenda de hoy" action="Calendario" onAction={() => navigate('/calendar')} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {todayEvents.length === 0
                 ? <EmptyState text="Día libre. Un buen momento para adelantar." />
@@ -315,7 +317,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (r: string) => void }) {
 
           {/* Próximos exámenes */}
           <Card padding={24} style={{ background: T.accentSoft, border: `1px solid ${T.accentDim}44` }}>
-            <SectionHeader title="Próximos exámenes" action="Materias" onAction={() => onNavigate('subjects')} />
+            <SectionHeader title="Próximos exámenes" action="Materias" onAction={() => navigate('/subjects')} />
             {upcomingExams.length === 0
               ? <EmptyState text="Sin exámenes en los próximos 30 días. ✦" />
               : (

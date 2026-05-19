@@ -1,23 +1,26 @@
+import { useNavigate, useLocation } from 'react-router-dom';
 import { T } from '../../design/tokens';
 import { Icon } from '../ui/Icon';
 
-type Route = 'dashboard' | 'calendar' | 'tasks-table' | 'tasks-tree' | 'subjects' | 'personal';
-
 const NAV = [
-  { id: 'dashboard',   label: 'Inicio',    icon: 'home'     },
-  { id: 'calendar',    label: 'Agenda',    icon: 'calendar' },
-  { id: 'tasks-table', label: 'Tareas',    icon: 'list'     },
-  { id: 'subjects',    label: 'Materias',  icon: 'book'     },
-  { id: 'personal',    label: 'Personal',  icon: 'heart'    },
+  { path: '/',            label: 'Inicio',    icon: 'home'     },
+  { path: '/calendar',    label: 'Agenda',    icon: 'calendar' },
+  { path: '/tasks-table', label: 'Tareas',    icon: 'list'     },
+  { path: '/subjects',    label: 'Materias',  icon: 'book'     },
+  { path: '/personal',    label: 'Personal',  icon: 'heart'    },
 ] as const;
 
-export function BottomNav({ active, onNavigate }: { active: Route; onNavigate: (r: Route) => void }) {
+export function BottomNav() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   return (
     <div style={{ display: 'flex', background: T.surface, borderTop: `1px solid ${T.line}`, padding: '6px 4px' }}>
       {NAV.map(it => {
-        const isActive = active === it.id || (it.id === 'tasks-table' && active === 'tasks-tree');
+        const isActive = location.pathname === it.path ||
+          (it.path === '/tasks-table' && location.pathname === '/tasks-tree');
         return (
-          <button key={it.id} onClick={() => onNavigate(it.id as Route)} style={{
+          <button key={it.path} onClick={() => navigate(it.path)} style={{
             flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
             padding: '6px 0', background: 'transparent', border: 'none', cursor: 'pointer',
             color: isActive ? T.accent : T.inkMuted, fontFamily: T.fontUI,

@@ -18,7 +18,15 @@
       "Bash(gh repo *)",
       "PowerShell(gh repo *)",
       "Bash(git branch *)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(dir \"C:\\\\Users\\\\tomad\\\\Documents\\\\GitHub\\\\Uniplaner\\\\src\" -Recurse)",
+      "Bash(powershell *)",
+      "Bash(Get-ChildItem *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\tomad\\\\Documents\\\\GitHub\\\\Uniplaner\" -Force | Select-Object Name, @{Name=\"Type\";Expression={if\\($_.PSIsContainer\\){\"DIR\"}else{\"FILE\"}}} | Format-Table -AutoSize)",
+      "Bash(Select-Object FullName)",
+      "Bash(\\\\.svg)",
+      "Bash(\\\\.jpg)",
+      "Bash(\\\\.ico\")"
     ]
   }
 }

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from './auth/authStore';
 import { useAuth } from './auth/GoogleAuthProvider';
@@ -19,15 +20,14 @@ const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 0, gcTime: 1000 * 60 * 5 } },
 });
 
-type Route = 'dashboard' | 'calendar' | 'tasks-table' | 'tasks-tree' | 'subjects' | 'personal';
-
-// ─── Inner app (necesita QueryClientProvider ya montado) ──────────────────────
+// ─── Inner app (necesita QueryClientProvider y BrowserRouter ya montados) ─────
 
 function AppInner() {
   const { isAuthenticated, isInitializing } = useAuthStore();
   const { logout } = useAuth();
   const { syncNow } = useSync();
-  const [route, setRoute] = useState<Route>('dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [mobile, setMobile] = useState(() => window.innerWidth < 768);
 
   useEffect(() => {
@@ -51,44 +51,48 @@ function AppInner() {
 
   if (!isAuthenticated) return <LoginScreen />;
 
-  const navigate = (r: string) => setRoute(r as Route);
+  const pages = (
+    <Routes>
+      <Route path="/"            element={<Dashboard />} />
+      <Route path="/calendar"    element={<Calendar />} />
+      <Route path="/tasks-table" element={<TasksTable />} />
+      <Route path="/tasks-tree"  element={<TasksTree />} />
+      <Route path="/subjects"    element={<Subjects />} />
+      <Route path="/personal"    element={<PersonalLife />} />
+      <Route path="*"            element={<Dashboard />} />
+    </Routes>
+  );
 
-  const page = route === 'dashboard'   ? <Dashboard onNavigate={navigate} />
-             : route === 'calendar'    ? <Calendar />
-             : route === 'tasks-table' ? <TasksTable />
-             : route === 'tasks-tree'  ? <TasksTree />
-             : route === 'subjects'    ? <Subjects />
-             : route === 'personal'    ? <PersonalLife />
-             : null;
+  const isTasksRoute = location.pathname === '/tasks-table' || location.pathname === '/tasks-tree';
 
   if (mobile) {
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: T.bg }}>
         <SyncBanner onSync={syncNow} />
-        <div className="up-scroll" style={{ flex: 1, overflow: 'auto' }}>{page}</div>
-        <BottomNav active={route} onNavigate={setRoute} />
+        <div className="up-scroll" style={{ flex: 1, overflow: 'auto' }}>{pages}</div>
+        <BottomNav />
       </div>
     );
   }
 
   return (
     <div style={{ height: '100%', display: 'flex', background: T.bg }}>
-      <Sidebar active={route} onNavigate={setRoute} onLogout={logout} onSyncNow={syncNow} />
+      <Sidebar onLogout={logout} onSyncNow={syncNow} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <SyncBanner onSync={syncNow} />
-        {(route === 'tasks-table' || route === 'tasks-tree') && (
+        {isTasksRoute && (
           <div style={{ padding: '8px 32px 0', background: T.bg, display: 'flex', gap: 6 }}>
-            {([['tasks-table','Tabla','list'],['tasks-tree','Por materia','tree']] as const).map(([id,label]) => (
-              <button key={id} onClick={() => setRoute(id)} style={{
+            {(['/tasks-table', '/tasks-tree'] as const).map((path, i) => (
+              <button key={path} onClick={() => navigate(path)} style={{
                 padding: '6px 14px', fontSize: 12, fontFamily: T.fontUI,
-                background: route === id ? T.accentSoft : 'transparent',
-                color: route === id ? T.accentInk : T.inkSoft,
+                background: location.pathname === path ? T.accentSoft : 'transparent',
+                color: location.pathname === path ? T.accentInk : T.inkSoft,
                 border: 'none', borderRadius: T.rFull, cursor: 'pointer', fontWeight: 500,
-              }}>{label}</button>
+              }}>{i === 0 ? 'Tabla' : 'Por materia'}</button>
             ))}
           </div>
         )}
-        <div className="up-scroll" style={{ flex: 1, overflow: 'auto' }}>{page}</div>
+        <div className="up-scroll" style={{ flex: 1, overflow: 'auto' }}>{pages}</div>
       </div>
     </div>
   );
@@ -96,8 +100,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={qc}>
-      <AppInner />
-    </QueryClientProvider>
+    <BrowserRouter>
+      <QueryClientProvider client={qc}>
+        <AppInner />
+      </QueryClientProvider>
+    </BrowserRouter>
   );
 }

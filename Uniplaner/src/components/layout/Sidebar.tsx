@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { T } from '../../design/tokens';
 import { Icon } from '../ui/Icon';
 import { Avatar } from '../ui/Misc';
@@ -7,31 +8,29 @@ import { useAuthStore } from '../../auth/authStore';
 import { useSyncStore } from '../../store/syncStore';
 import { formatDate } from '../../utils/date';
 
-type Route = 'dashboard' | 'calendar' | 'tasks-table' | 'tasks-tree' | 'subjects' | 'personal';
-
 const NAV = [
-  { id: 'dashboard',   label: 'Inicio',        icon: 'home'     },
-  { id: 'calendar',    label: 'Agenda',        icon: 'calendar' },
-  { id: 'tasks-table', label: 'Tareas',        icon: 'list'     },
-  { id: 'tasks-tree',  label: 'Por materia',   icon: 'tree'     },
-  { id: 'subjects',    label: 'Materias',      icon: 'book'     },
-  { id: 'personal',    label: 'Vida personal', icon: 'heart'    },
+  { path: '/',            label: 'Inicio',        icon: 'home'     },
+  { path: '/calendar',    label: 'Agenda',        icon: 'calendar' },
+  { path: '/tasks-table', label: 'Tareas',        icon: 'list'     },
+  { path: '/tasks-tree',  label: 'Por materia',   icon: 'tree'     },
+  { path: '/subjects',    label: 'Materias',      icon: 'book'     },
+  { path: '/personal',    label: 'Vida personal', icon: 'heart'    },
 ] as const;
 
 interface SidebarProps {
-  active: Route;
-  onNavigate: (r: Route) => void;
   onLogout: () => void;
   onSyncNow: () => void;
 }
 
-export function Sidebar({ active, onNavigate, onLogout, onSyncNow }: SidebarProps) {
+export function Sidebar({ onLogout, onSyncNow }: SidebarProps) {
   const { user } = useAuthStore();
   const { isSyncing, lastSyncAt, syncError } = useSyncStore();
   const [syncHover, setSyncHover] = useState(false);
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem('up-sidebar-collapsed') === 'true'
   );
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const toggle = () => setCollapsed(v => {
     localStorage.setItem('up-sidebar-collapsed', String(!v));
@@ -93,11 +92,11 @@ export function Sidebar({ active, onNavigate, onLogout, onSyncNow }: SidebarProp
       {/* Nav */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {NAV.map(it => {
-          const isActive = active === it.id;
+          const isActive = location.pathname === it.path;
           return (
             <button
-              key={it.id}
-              onClick={() => onNavigate(it.id as Route)}
+              key={it.path}
+              onClick={() => navigate(it.path)}
               title={collapsed ? it.label : undefined}
               style={{
                 display: 'flex', alignItems: 'center', width: '100%',

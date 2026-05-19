@@ -183,7 +183,7 @@ function TaskRow({ task, subject, now, onDelete }: { task: Task; subject?: Subje
         )}
       </div>
       {/* Materia */}
-      <div style={COL}><SubjectChip subject={subject} compact /></div>
+      <div style={{ ...COL, overflow: 'hidden' }}><SubjectChip subject={subject} compact /></div>
       {/* Prioridad (clickable cycler — sin NONE en ciclo) */}
       <div style={COL}>
         <InlineCycler<TaskPriorityKey>

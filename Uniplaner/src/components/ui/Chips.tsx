@@ -50,10 +50,13 @@ export function SubjectChip({ subject, compact }: { subject?: Subject | null } &
       borderRadius: T.rFull,
       background: subject.color + '26',
       color: T.ink,
-      fontSize: compact ? 11 : 12, fontWeight: 500, fontFamily: T.fontUI, whiteSpace: 'nowrap',
+      fontSize: compact ? 11 : 12, fontWeight: 500, fontFamily: T.fontUI,
+      maxWidth: '100%', minWidth: 0,
     }}>
-      <span style={{ width: 7, height: 7, borderRadius: 3.5, background: subject.color }} />
-      {subject.name}
+      <span style={{ width: 7, height: 7, borderRadius: 3.5, background: subject.color, flexShrink: 0 }} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {subject.name}
+      </span>
     </span>
   );
 }

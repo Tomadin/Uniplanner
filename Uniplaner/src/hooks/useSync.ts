@@ -4,11 +4,12 @@ import { SyncService } from '../sync/SyncService';
 import { useAuthStore } from '../auth/authStore';
 import { useAuth } from '../auth/GoogleAuthProvider';
 import { useSyncStore } from '../store/syncStore';
+import { purgeExpiredTasks } from '../db/db';
 
 export function useSync() {
   const { isAuthenticated } = useAuthStore();
   const { refreshTokenSilently } = useAuth();
-  const { setSyncing, setSyncSuccess, setSyncError, setDirty } = useSyncStore();
+  const { setSyncing, setSyncSuccess, setSyncError, setDirty, setOffline } = useSyncStore();
   const qc = useQueryClient();
   const serviceRef = useRef<SyncService | null>(null);
 
@@ -30,12 +31,21 @@ export function useSync() {
     let visibilityTimer: ReturnType<typeof setTimeout> | null = null;
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
         if (visibilityTimer) clearTimeout(visibilityTimer);
         visibilityTimer = setTimeout(() => { svc.save().catch(console.error); }, 1000);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
+
+    const handleOnline = () => {
+      setOffline(false);
+      svc.save().catch(console.error);
+    };
+    const handleOffline = () => setOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    setOffline(!navigator.onLine);
 
     const unsubMutations = qc.getMutationCache().subscribe((event) => {
       if (event.type === 'updated' && event.mutation?.state.status === 'success') {
@@ -45,7 +55,8 @@ export function useSync() {
 
     setSyncing(true);
     svc.initialize()
-      .then(() => {
+      .then(async () => {
+        await purgeExpiredTasks().catch(console.error);
         setSyncSuccess();
         invalidateAll();
         cleanupPeriodic = svc.schedulePeriodicSync();
@@ -56,12 +67,17 @@ export function useSync() {
       cleanupPeriodic?.();
       if (visibilityTimer) clearTimeout(visibilityTimer);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       unsubMutations();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  const syncNow = () => serviceRef.current?.save();
+  const syncNow = () => {
+    if (!navigator.onLine) return;
+    serviceRef.current?.save();
+  };
 
   return { syncNow };
 }

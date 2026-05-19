@@ -28,9 +28,10 @@ interface EventModalProps {
 }
 
 function EventModal({ event, defaultStart, defaultEnd, subjects, isSaving, saveError, onSave, onDelete, onClose }: EventModalProps) {
-  // BUG-1: producir hora local para datetime-local (toISOString devuelve UTC)
   const toLocal = (iso?: string) => {
     if (!iso) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso + 'T00:00';
+    if (!iso.endsWith('Z') && !iso.includes('+')) return iso.slice(0, 16);
     const d = new Date(iso);
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   };
@@ -287,6 +288,7 @@ export function Calendar() {
   const [saveError,  setSaveError]  = useState<string | null>(null);
   const [onlyTasks,  setOnlyTasks]  = useState(false);
 
+  const activeSubjects = subjects.filter(s => s.isActive);
   const allFcEvents = expandToFC(events, tasks, subjects);
   const fcEvents = onlyTasks
     ? allFcEvents.filter(e => (e.extendedProps as { isTaskDue?: boolean }).isTaskDue)
@@ -479,8 +481,8 @@ export function Calendar() {
               </span>
             );
 
-            // ① Clase recurrente de materia — sólido + icono ↺
-            if (props.isSubjectEvent && props.isRecurring) {
+            // ① Clase recurrente de materia o examen — sólido con texto blanco
+            if (props.isExam || (props.isSubjectEvent && props.isRecurring)) {
               return (
                 <div style={{
                   display: 'flex', alignItems: 'flex-start', gap: 4,
@@ -489,10 +491,10 @@ export function Calendar() {
                   height: '100%', boxSizing: 'border-box',
                   color: '#fff', fontSize: 12, fontWeight: 500,
                 }}>
-                  <span style={{ flexShrink: 0, fontSize: 10, opacity: 0.75, paddingTop: 1 }}>↺</span>
+                  {props.isRecurring && <span style={{ flexShrink: 0, fontSize: 10, opacity: 0.75, paddingTop: 1 }}>↺</span>}
+                  {props.isExam && <span style={{ flexShrink: 0, fontSize: 10, opacity: 0.75, paddingTop: 1 }}>✎</span>}
                   {timeSpan}
                   {titleSpan}
-                  {props.isExam && <span style={{ flexShrink: 0, fontSize: 11 }}>✎</span>}
                 </div>
               );
             }
@@ -561,7 +563,7 @@ export function Calendar() {
           event={modal.event}
           defaultStart={modal.defaultStart}
           defaultEnd={modal.defaultEnd}
-          subjects={subjects}
+          subjects={activeSubjects}
           isSaving={isSaving}
           saveError={saveError}
           onSave={handleSave}
