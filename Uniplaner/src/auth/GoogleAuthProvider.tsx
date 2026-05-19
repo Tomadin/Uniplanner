@@ -79,7 +79,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function GoogleAuthProvider({ children }: { children: React.ReactNode }) {
-  const { setUser, setAccessToken, clearAuth, isTokenValid, setInitializing } = useAuthStore();
+  const { setUser, setAccessToken, clearAuth, isTokenValid, setInitializing, restoreFromStorage } = useAuthStore();
 
   const tokenClientRef = useRef<GisTokenClient | null>(null);
   const pendingRefreshRef = useRef<Array<{
@@ -133,6 +133,11 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
     }
 
     const init = () => {
+      if (restoreFromStorage()) {
+        setInitializing(false);
+        return;
+      }
+
       tokenClientRef.current = window.google!.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope: SCOPES,
@@ -205,7 +210,7 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
     return () => {
       if (document.body.contains(script)) document.body.removeChild(script);
     };
-  }, [handleTokenResponse]);
+  }, [handleTokenResponse, restoreFromStorage]);
 
   const login = useCallback(() => {
     tokenClientRef.current?.requestAccessToken({ prompt: 'consent' });
