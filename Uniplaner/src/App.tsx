@@ -63,6 +63,19 @@ function AppInner() {
     return (
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: T.bg }}>
         <SyncBanner onSync={syncNow} />
+        {isTasksRoute && (
+          <div style={{ display: 'flex', gap: 6, padding: '8px 16px 0', background: T.bg }}>
+            {(['/tasks-table', '/tasks-tree'] as const).map((path, i) => (
+              <button key={path} onClick={() => navigate(path)} style={{
+                flex: 1, padding: '7px 0', fontSize: 13, fontFamily: T.fontUI,
+                background: location.pathname === path ? T.accentSoft : 'transparent',
+                color: location.pathname === path ? T.accentInk : T.inkSoft,
+                border: `1px solid ${location.pathname === path ? T.accentDim + '88' : T.line}`,
+                borderRadius: T.rFull, cursor: 'pointer', fontWeight: 500,
+              }}>{i === 0 ? 'Tabla' : 'Por materia'}</button>
+            ))}
+          </div>
+        )}
         <div className="up-scroll" style={{ flex: 1, overflow: 'auto' }}>{pages}</div>
         <BottomNav />
       </div>
