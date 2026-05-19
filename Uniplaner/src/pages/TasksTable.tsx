@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useResponsive } from '../hooks/useResponsive';
 import { T, STATUS_META, PRIORITY_META, PRIORITY_CYCLE, STATUS_CYCLE } from '../design/tokens';
 import type { TaskPriorityKey, TaskStatusKey } from '../design/tokens';
 import { SectionTitle, EmptyState } from '../components/ui/Misc';
@@ -52,7 +53,7 @@ function InlineCycler<T extends string>({ value, cycle, render, onChange }: {
   );
 }
 
-function AddTaskForm({ onDone, subjects }: { onDone: () => void; subjects: Subject[] }) {
+function AddTaskForm({ onDone, subjects, mobile }: { onDone: () => void; subjects: Subject[]; mobile: boolean }) {
   const [title,     setTitle]     = useState('');
   const [subjectId, setSubjectId] = useState<string>('');
   const [dueDate,   setDueDate]   = useState('');
@@ -81,19 +82,20 @@ function AddTaskForm({ onDone, subjects }: { onDone: () => void; subjects: Subje
       <input autoFocus value={title} onChange={e => setTitle(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onDone(); }}
         placeholder="Título de la nueva tarea…"
-        style={{ ...INPUT, flex: 1, minWidth: 200, fontSize: 14 }}
+        style={{ ...INPUT, flex: 1, minWidth: 120, fontSize: 14 }}
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, whiteSpace: 'nowrap' }}>Materia:</span>
-        <select value={subjectId} onChange={e => setSubjectId(e.target.value)} style={INPUT}>
+        {!mobile && <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, whiteSpace: 'nowrap' }}>Materia:</span>}
+        <select value={subjectId} onChange={e => setSubjectId(e.target.value)} style={INPUT} title="Materia">
           <option value="">— General</option>
           {subjects.filter(s => s.isActive).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, whiteSpace: 'nowrap' }}>Prioridad:</span>
+        {!mobile && <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, whiteSpace: 'nowrap' }}>Prioridad:</span>}
         <select value={priority} onChange={e => setPriority(e.target.value as TaskPriorityKey)}
-          style={{ ...INPUT, background: PRIORITY_META[priority].bg, color: PRIORITY_META[priority].fg, fontWeight: 500 }}>
+          style={{ ...INPUT, background: PRIORITY_META[priority].bg, color: PRIORITY_META[priority].fg, fontWeight: 500 }}
+          title="Prioridad">
           {PRIORITY_CYCLE.filter(p => p !== 'NONE').map(p => (
             <option key={p} value={p} style={{ background: PRIORITY_META[p].bg, color: PRIORITY_META[p].fg }}>
               {PRIORITY_META[p].label}
@@ -102,7 +104,7 @@ function AddTaskForm({ onDone, subjects }: { onDone: () => void; subjects: Subje
         </select>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, whiteSpace: 'nowrap' }}>Vence:</span>
+        {!mobile && <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, whiteSpace: 'nowrap' }}>Vence:</span>}
         <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
           title="Fecha de vencimiento (opcional)" style={INPUT}
         />
@@ -251,8 +253,67 @@ function TaskRow({ task, subject, now, onDelete }: { task: Task; subject?: Subje
   );
 }
 
+function TaskCard({ task, subject, now, onDelete }: {
+  task: Task; subject?: Subject; now: Date; onDelete: (t: Task) => void;
+}) {
+  const toggle = useToggleTask();
+  const update = useUpdateTask();
+  const isDone    = task.status === 'COMPLETED' || task.status === 'CANCELLED';
+  const isOverdue = task.dueDate && !isDone && daysBetween(task.dueDate, now) < 0;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 10,
+      padding: '12px 14px', borderBottom: `1px solid ${T.lineSoft}`,
+      background: isOverdue ? T.dangerSoft : 'transparent',
+      borderLeft: `3px solid ${isOverdue ? T.danger : 'transparent'}`,
+      opacity: isDone ? 0.55 : 1,
+    }}>
+      <div style={{ paddingTop: 2 }}>
+        <Checkbox checked={task.status === 'COMPLETED'} size={18} onChange={() => toggle.mutate(task)} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontFamily: T.fontUI, fontWeight: 500, color: T.ink,
+          textDecoration: isDone ? 'line-through' : 'none',
+          textDecorationColor: T.inkMuted, marginBottom: 6 }}>
+          {task.title}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          <SubjectChip subject={subject} compact />
+          <InlineCycler<TaskPriorityKey>
+            value={task.priority} cycle={PRIORITY_CYCLE_NO_NONE}
+            render={v => <PriorityChip value={v} compact />}
+            onChange={v => update.mutate({ id: task.id, changes: { priority: v } })}
+          />
+          {task.dueDate && (
+            <span style={{ fontSize: 11, fontFamily: T.fontUI,
+              color: isOverdue ? T.danger : T.inkSoft, fontWeight: isOverdue ? 600 : 400 }}>
+              {relativeLabel(task.dueDate, now)}
+            </span>
+          )}
+          <InlineCycler<TaskStatusKey>
+            value={task.status} cycle={STATUS_CYCLE_INTERACTIVE}
+            render={v => <StatusChip value={v} compact />}
+            onChange={v => update.mutate({ id: task.id, changes: {
+              status: v,
+              completedAt: v === 'COMPLETED' ? new Date().toISOString() : null,
+            }})}
+          />
+        </div>
+        {task.observations && (
+          <div style={{ fontSize: 12, color: T.inkSoft, fontFamily: T.fontDisplay,
+            fontStyle: 'italic', marginTop: 4 }}>
+            ↳ {task.observations}
+          </div>
+        )}
+      </div>
+      <IconButton icon="trash" size={26} title="Eliminar tarea" onClick={() => onDelete(task)} />
+    </div>
+  );
+}
+
 export function TasksTable() {
   const now = new Date();
+  const { mobile } = useResponsive();
   const { data: subjects = [] } = useSubjects();
   const { data: tasks    = [] } = useTasks();
   const [adding,         setAdding]         = useState(false);
@@ -301,7 +362,7 @@ export function TasksTable() {
   };
 
   return (
-    <div style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: mobile ? 16 : 32, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <SectionTitle size="lg">Todas las tareas</SectionTitle>
@@ -346,23 +407,25 @@ export function TasksTable() {
         </div>
       </div>
 
-      {adding && <AddTaskForm subjects={subjects} onDone={() => setAdding(false)} />}
+      {adding && <AddTaskForm subjects={subjects} mobile={mobile} onDone={() => setAdding(false)} />}
 
-      {/* Tabla */}
+      {/* Tabla / Tarjetas */}
       <div style={{ background: T.surface, border: `1px solid ${T.line}`, borderRadius: T.r3, overflow: 'hidden' }}>
-        {/* Header */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '40px 1fr 130px 100px 110px 110px 76px',
-          borderBottom: `1px solid ${T.line}`, background: T.surfaceAlt,
-        }}>
-          {['','Tarea','Materia','Prioridad','Vence','Estado',''].map((h,i) => (
-            <div key={i} style={{ ...HDR, padding: '12px 8px' }}>{h}</div>
-          ))}
-        </div>
-
+        {!mobile && (
+          <div style={{
+            display: 'grid', gridTemplateColumns: '40px 1fr 130px 100px 110px 110px 76px',
+            borderBottom: `1px solid ${T.line}`, background: T.surfaceAlt,
+          }}>
+            {['','Tarea','Materia','Prioridad','Vence','Estado',''].map((h,i) => (
+              <div key={i} style={{ ...HDR, padding: '12px 8px' }}>{h}</div>
+            ))}
+          </div>
+        )}
         {visible.length === 0 && <div style={{ padding: 24 }}><EmptyState text="No hay tareas con esos filtros." /></div>}
-
-        {visible.map(t => <TaskRow key={t.id} task={t} subject={subjectById[t.subjectId ?? '']} now={now} onDelete={handleDelete} />)}
+        {visible.map(t => mobile
+          ? <TaskCard key={t.id} task={t} subject={subjectById[t.subjectId ?? '']} now={now} onDelete={handleDelete} />
+          : <TaskRow  key={t.id} task={t} subject={subjectById[t.subjectId ?? '']} now={now} onDelete={handleDelete} />
+        )}
       </div>
 
       {pendingDelete && <UndoToast task={pendingDelete} onUndo={handleUndo} />}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useResponsive } from '../hooks/useResponsive';
 import { RRule } from 'rrule';
 import { useAuthStore } from '../auth/authStore';
 import { T, PRIORITY_META } from '../design/tokens';
@@ -227,6 +228,7 @@ export function Dashboard() {
   const { data: events   = [] } = useEvents();
   const deleteNote              = useDeleteQuickNote();
 
+  const { mobile, tablet } = useResponsive();
   const firstName    = user?.name?.split(' ')[0] ?? 'estudiante';
   const subjectById  = Object.fromEntries(subjects.map(s => [s.id, s]));
 
@@ -252,7 +254,7 @@ export function Dashboard() {
   const todayEvents = eventsForDate(events, now);
 
   return (
-    <div style={{ padding: 32, maxWidth: 1240, margin: '0 auto' }}>
+    <div style={{ padding: mobile ? 16 : 32, maxWidth: 1240, margin: '0 auto' }}>
 
       {/* ── Hero ── */}
       <div style={{ marginBottom: 32 }}>
@@ -276,7 +278,7 @@ export function Dashboard() {
       </div>
 
       {/* ── Stats ── */}
-      <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 28 }}>
+      <div style={{ display: 'grid', gap: 12, gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', marginBottom: 28 }}>
         <StatCard label="En curso"          value={inProgress.length}   sub="tareas activas" />
         <StatCard label="Completadas"        value={completed.length}    sub="buen trabajo ✦" accent />
         <StatCard label="Próx. exámenes"     value={upcomingExams.length} sub="en 30 días" />
@@ -284,7 +286,7 @@ export function Dashboard() {
       </div>
 
       {/* ── Grilla principal ── */}
-      <div style={{ display: 'grid', gap: 20, gridTemplateColumns: '1.3fr 1fr' }}>
+      <div style={{ display: 'grid', gap: 20, gridTemplateColumns: tablet ? '1fr' : '1.3fr 1fr' }}>
 
         {/* Columna izquierda */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

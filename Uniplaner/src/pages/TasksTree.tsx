@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useResponsive } from '../hooks/useResponsive';
 import { T, PRIORITY_META, PRIORITY_CYCLE } from '../design/tokens';
 import type { TaskPriorityKey } from '../design/tokens';
 import { SectionTitle, Card, EmptyState } from '../components/ui/Misc';
@@ -208,6 +209,7 @@ function SubjectGroup({ subjectId, subjectName, subjectColor, tasks, childrenOf,
 
 export function TasksTree() {
   const now = new Date();
+  const { mobile } = useResponsive();
   const { data: subjects = [] } = useSubjects();
   const { data: tasks    = [] } = useTasks();
   const [adding, setAdding] = useState(false);
@@ -222,7 +224,7 @@ export function TasksTree() {
   });
 
   return (
-    <div style={{ padding: 32, maxWidth: 980, margin: '0 auto' }}>
+    <div style={{ padding: mobile ? 16 : 32, maxWidth: 980, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <SectionTitle size="lg">Tareas por materia</SectionTitle>

@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
+import { useResponsive } from '../hooks/useResponsive';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import listPlugin from '@fullcalendar/list';
 import type { EventClickArg, DateSelectArg, EventInput } from '@fullcalendar/core';
 import { RRule } from 'rrule';
 import { T } from '../design/tokens';
@@ -272,6 +274,7 @@ function expandToFC(events: UPEvent[], tasks: ReturnType<typeof useTasks>['data'
 
 export function Calendar() {
   const calRef = useRef<FullCalendar>(null);
+  const { mobile } = useResponsive();
   const { data: subjects = [] } = useSubjects();
   const { data: events   = [] } = useEvents();
   const { data: tasks    = [] } = useTasks();
@@ -336,7 +339,7 @@ export function Calendar() {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 1240, margin: '0 auto' }}>
+    <div style={{ padding: mobile ? 12 : 24, maxWidth: 1240, margin: '0 auto' }}>
       {/* UX-6: flexWrap para que la leyenda y el botón no se aprieten en pantallas intermedias */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -434,15 +437,14 @@ export function Calendar() {
 
         <FullCalendar
           ref={calRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+          initialView={mobile ? 'timeGridWeek' : 'dayGridMonth'}
           locale="es"
-          buttonText={{ today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día' }}
-          headerToolbar={{
-            left:   'prev,next today',
-            center: 'title',
-            right:  'dayGridMonth,timeGridWeek,timeGridDay',
-          }}
+          buttonText={{ today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día', list: 'Lista' }}
+          headerToolbar={mobile
+            ? { left: 'prev,next', center: 'title', right: 'today' }
+            : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }
+          }
           events={fcEvents}
           eventContent={(arg) => {
             const props = arg.event.extendedProps as {

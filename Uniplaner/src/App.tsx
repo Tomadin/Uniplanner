@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from './auth/authStore';
 import { useAuth } from './auth/GoogleAuthProvider';
 import { useSync } from './hooks/useSync';
+import { useResponsive } from './hooks/useResponsive';
 import { Sidebar } from './components/layout/Sidebar';
 import { BottomNav } from './components/layout/BottomNav';
 import { SyncBanner } from './components/layout/SyncBanner';
@@ -28,13 +28,7 @@ function AppInner() {
   const { syncNow } = useSync();
   const navigate = useNavigate();
   const location = useLocation();
-  const [mobile, setMobile] = useState(() => window.innerWidth < 768);
-
-  useEffect(() => {
-    const handler = () => setMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
+  const { mobile } = useResponsive();
 
   if (isInitializing) return (
     <div style={{

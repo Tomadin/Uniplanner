@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useResponsive } from '../hooks/useResponsive';
 import { T } from '../design/tokens';
 import { Icon } from '../components/ui/Icon';
 import type { PersonalItem, PersonalList } from '../types';
@@ -13,6 +14,7 @@ import {
 } from '../hooks/usePersonalLists';
 
 export function PersonalLife() {
+  const { mobile } = useResponsive();
   const { data: lists = [] } = usePersonalLists();
   const addList = useAddPersonalList();
   const [addingList, setAddingList] = useState(false);
@@ -28,7 +30,7 @@ export function PersonalLife() {
   };
 
   return (
-    <div style={{ padding: 32, maxWidth: 1080, margin: '0 auto' }}>
+    <div style={{ padding: mobile ? 16 : 32, maxWidth: 1080, margin: '0 auto' }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
         marginBottom: 20, flexWrap: 'wrap', gap: 10,
@@ -104,7 +106,7 @@ export function PersonalLife() {
 
       <div style={{
         display: 'grid', gap: 20,
-        gridTemplateColumns: 'repeat(auto-fill, minmax(440px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
         alignItems: 'start',
       }}>
         {lists.map(list => (

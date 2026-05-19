@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useResponsive } from '../hooks/useResponsive';
 import { T, SUBJECT_COLORS } from '../design/tokens';
 import { SectionTitle, EmptyState } from '../components/ui/Misc';
 import { Button, Checkbox, IconButton } from '../components/ui/Button';
@@ -254,6 +255,7 @@ function SubjectCard({ subject, taskCount, onEdit, onToggleActive }: {
 // ─── Página ────────────────────────────────────────────────────────────────────
 
 export function Subjects() {
+  const { mobile } = useResponsive();
   const { data: subjects = [] } = useSubjects();
   const { data: tasks    = [] } = useTasks();
   const addSubject    = useAddSubject();
@@ -272,7 +274,7 @@ export function Subjects() {
     tasks.filter(t => t.subjectId === id && t.status !== 'COMPLETED' && t.status !== 'CANCELLED').length;
 
   return (
-    <div style={{ padding: 32, maxWidth: 1080, margin: '0 auto' }}>
+    <div style={{ padding: mobile ? 16 : 32, maxWidth: 1080, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
