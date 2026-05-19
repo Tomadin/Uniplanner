@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { T } from '../../design/tokens';
 import { Icon } from '../ui/Icon';
 import { Avatar } from '../ui/Misc';
-import { IconButton } from '../ui/Button';
+import { Button, IconButton } from '../ui/Button';
 import { useAuthStore } from '../../auth/authStore';
 import { useSyncStore } from '../../store/syncStore';
 import { formatDate } from '../../utils/date';
@@ -26,6 +26,7 @@ export function Sidebar({ onLogout, onSyncNow }: SidebarProps) {
   const { user } = useAuthStore();
   const { isSyncing, lastSyncAt, syncError } = useSyncStore();
   const [syncHover, setSyncHover] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem('up-sidebar-collapsed') === 'true'
   );
@@ -49,6 +50,7 @@ export function Sidebar({ onLogout, onSyncNow }: SidebarProps) {
   };
 
   return (
+    <>
     <div style={{
       width: collapsed ? 56 : 232,
       background: T.bg, borderRight: `1px solid ${T.line}`,
@@ -175,10 +177,45 @@ export function Sidebar({ onLogout, onSyncNow }: SidebarProps) {
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{user?.email}</div>
             </div>
-            <IconButton icon="dots" size={26} onClick={onLogout} />
+            <IconButton icon="dots" size={26} onClick={() => setShowLogoutModal(true)} />
           </>
         )}
       </div>
     </div>
+
+    {showLogoutModal && (
+      <div
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+        }}
+        onClick={() => setShowLogoutModal(false)}
+      >
+        <div
+          style={{
+            background: T.surface, borderRadius: T.r3, padding: 28,
+            boxShadow: T.shadowLg, width: 320,
+            display: 'flex', flexDirection: 'column', gap: 20,
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div>
+            <div style={{ fontFamily: T.fontDisplay, fontSize: 20, color: T.ink }}>
+              ¿Cerrar sesión?
+            </div>
+            <div style={{ fontSize: 13, color: T.inkMuted, fontFamily: T.fontUI, marginTop: 4 }}>
+              {user?.name} · {user?.email}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button variant="ghost" onClick={() => setShowLogoutModal(false)}>Cancelar</Button>
+            <Button variant="danger" onClick={() => { setShowLogoutModal(false); onLogout(); }}>
+              Cerrar sesión
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

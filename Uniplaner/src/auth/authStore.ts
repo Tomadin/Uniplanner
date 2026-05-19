@@ -23,12 +23,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   setUser: (user) => {
     if (user) localStorage.setItem(USER_EMAIL_KEY, user.email);
     else localStorage.removeItem(USER_EMAIL_KEY);
-    set({ user, isAuthenticated: !!user });
+    set({ user, isAuthenticated: !!user && !!get().accessToken });
   },
 
   setAccessToken: (token, expiresInSeconds = 3600) => {
     const expiry = token ? Date.now() + expiresInSeconds * 1000 : null;
-    set({ accessToken: token, tokenExpiry: expiry });
+    set({ accessToken: token, tokenExpiry: expiry, isAuthenticated: !!token && !!get().user });
   },
 
   clearAuth: () => {
