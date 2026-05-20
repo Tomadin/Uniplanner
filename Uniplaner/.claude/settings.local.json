@@ -26,7 +26,9 @@
       "Bash(Select-Object FullName)",
       "Bash(\\\\.svg)",
       "Bash(\\\\.jpg)",
-      "Bash(\\\\.ico\")"
+      "Bash(\\\\.ico\")",
+      "Bash(Select-Object -Property Name, FullName)",
+      "Bash(Format-Table -AutoSize)"
     ]
   }
 }
