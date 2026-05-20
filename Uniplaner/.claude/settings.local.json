@@ -29,7 +29,9 @@
       "Bash(\\\\.ico\")",
       "Bash(Select-Object -Property Name, FullName)",
       "Bash(Format-Table -AutoSize)",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(xargs grep -n \"clearAuth\\\\|logout\")",
+      "Bash(xargs grep -n \"\\\\.clear\\(\\)\\\\|db\\\\.transaction\")"
     ]
   }
 }

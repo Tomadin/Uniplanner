@@ -10,6 +10,7 @@ import type { EventClickArg, DateSelectArg, EventInput } from '@fullcalendar/cor
 import { RRule } from 'rrule';
 import { T, darkenHex, withAlpha, SUBJECT_COLORS } from '../design/tokens';
 import { Button, Checkbox, IconButton } from '../components/ui/Button';
+import { DateInput } from '../components/ui/DateInput';
 import { SectionTitle } from '../components/ui/Misc';
 import { useSubjects } from '../hooks/useSubjects';
 import { useEvents, useAddEvent, useUpdateEvent, useDeleteEvent } from '../hooks/useEvents';
@@ -156,11 +157,11 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, isSaving, saveE
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <label style={LABEL}>Inicio</label>
-              <input style={INPUT} type="datetime-local" value={start} onChange={e => setStart(e.target.value)} />
+              <input lang="es-AR" style={INPUT} type="datetime-local" value={start} onChange={e => setStart(e.target.value)} />
             </div>
             <div>
               <label style={LABEL}>Fin</label>
-              <input style={INPUT} type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} />
+              <input lang="es-AR" style={INPUT} type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} />
             </div>
           </div>
 
@@ -217,7 +218,7 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, isSaving, saveE
           {rrule && (
             <div>
               <label style={LABEL}>Repetir hasta (opcional)</label>
-              <input style={INPUT} type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+              <DateInput style={INPUT} value={endDate} onChange={setEndDate} />
             </div>
           )}
 
@@ -321,7 +322,7 @@ function expandToFC(events: UPEvent[], tasks: ReturnType<typeof useTasks>['data'
     result.push({
       id: `task_${t.id}`,
       title: t.title,
-      start: t.dueDate,
+      start: t.dueDate.includes('T') ? t.dueDate.split('T')[0] : t.dueDate,
       allDay: true,
       backgroundColor: withAlpha(taskColor, 0.22),
       borderColor: taskColor,

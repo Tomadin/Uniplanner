@@ -4,6 +4,7 @@ import { T, PRIORITY_META, PRIORITY_CYCLE } from '../design/tokens';
 import type { TaskPriorityKey } from '../design/tokens';
 import { SectionTitle, Card, EmptyState } from '../components/ui/Misc';
 import { Button, Checkbox, IconButton } from '../components/ui/Button';
+import { DateInput } from '../components/ui/DateInput';
 import { PriorityChip } from '../components/ui/Chips';
 import { Icon } from '../components/ui/Icon';
 import { useSubjects } from '../hooks/useSubjects';
@@ -32,7 +33,7 @@ function AddTaskForm({ subjectId, parentTaskId = null, onDone }: {
     add.mutate({
       subjectId, parentTaskId, title: title.trim(),
       description: null, priority, status: 'NOT_STARTED',
-      dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+      dueDate: dueDate || null,
       completedAt: null, observations: null,
     });
     onDone();
@@ -61,7 +62,7 @@ function AddTaskForm({ subjectId, parentTaskId = null, onDone }: {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, whiteSpace: 'nowrap' }}>Vence:</span>
-        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+        <DateInput value={dueDate} onChange={setDueDate}
           title="Fecha de vencimiento (opcional)" style={INPUT}
         />
       </div>

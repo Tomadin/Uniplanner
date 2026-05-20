@@ -3,6 +3,7 @@ import { useResponsive } from '../hooks/useResponsive';
 import { T, SUBJECT_COLORS } from '../design/tokens';
 import { SectionTitle, EmptyState } from '../components/ui/Misc';
 import { Button, Checkbox, IconButton } from '../components/ui/Button';
+import { DateInput } from '../components/ui/DateInput';
 import { useSubjects, useAddSubject, useUpdateSubject, useDeleteSubject } from '../hooks/useSubjects';
 import { useTasks } from '../hooks/useTasks';
 import type { Subject, ScheduleSlot } from '../types';
@@ -149,9 +150,9 @@ function SubjectEditor({
             <span style={{ fontSize: 13, fontFamily: T.fontUI, color: T.inkSoft, whiteSpace: 'nowrap' }}>
               Fin del cursado:
             </span>
-            <input
-              type="date" value={courseEnd}
-              onChange={e => setCourseEnd(e.target.value)}
+            <DateInput
+              value={courseEnd}
+              onChange={setCourseEnd}
               style={{ ...INPUT, width: 160 }}
             />
           </div>

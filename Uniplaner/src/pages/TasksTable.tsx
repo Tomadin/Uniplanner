@@ -4,6 +4,7 @@ import { T, STATUS_META, PRIORITY_META, PRIORITY_CYCLE, STATUS_CYCLE } from '../
 import type { TaskPriorityKey, TaskStatusKey } from '../design/tokens';
 import { SectionTitle, EmptyState } from '../components/ui/Misc';
 import { Button, Checkbox, IconButton } from '../components/ui/Button';
+import { DateInput } from '../components/ui/DateInput';
 import { PriorityChip, StatusChip, SubjectChip } from '../components/ui/Chips';
 import { useSubjects } from '../hooks/useSubjects';
 import { useTasks, useAddTask, useToggleTask, useDeleteTask, useUpdateTask } from '../hooks/useTasks';
@@ -64,7 +65,7 @@ function AddTaskForm({ onDone, subjects, mobile }: { onDone: () => void; subject
     add.mutate({
       title: title.trim(), subjectId: subjectId || null, parentTaskId: null,
       description: null, priority, status: 'NOT_STARTED',
-      dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+      dueDate: dueDate || null,
       completedAt: null, observations: null,
     });
     onDone();
@@ -105,7 +106,7 @@ function AddTaskForm({ onDone, subjects, mobile }: { onDone: () => void; subject
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {!mobile && <span style={{ fontSize: 12, color: T.inkMuted, fontFamily: T.fontUI, whiteSpace: 'nowrap' }}>Vence:</span>}
-        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+        <DateInput value={dueDate} onChange={setDueDate}
           title="Fecha de vencimiento (opcional)" style={INPUT}
         />
       </div>
@@ -121,7 +122,7 @@ function TaskRow({ task, subject, now, onDelete }: { task: Task; subject?: Subje
   const [editingDate,  setEditingDate]  = useState(false);
   const [titleDraft,   setTitleDraft]   = useState(task.title);
   const [dateDraft,    setDateDraft]    = useState(
-    task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''
+    task.dueDate ? task.dueDate.split('T')[0] : ''
   );
   const toggle = useToggleTask();
   const update = useUpdateTask();
@@ -198,16 +199,18 @@ function TaskRow({ task, subject, now, onDelete }: { task: Task; subject?: Subje
       <div style={{ ...COL, fontSize: 12, fontFamily: T.fontUI,
         color: isOverdue ? T.danger : T.inkSoft, fontWeight: isOverdue ? 600 : 400 }}>
         {editingDate ? (
-          <input autoFocus type="date" value={dateDraft}
-            onChange={e => setDateDraft(e.target.value)}
+          <DateInput
+            autoFocus
+            value={dateDraft}
+            onChange={setDateDraft}
             onBlur={() => {
-              update.mutate({ id: task.id, changes: { dueDate: dateDraft ? new Date(dateDraft).toISOString() : null } });
+              update.mutate({ id: task.id, changes: { dueDate: dateDraft || null } });
               setEditingDate(false);
             }}
             onKeyDown={e => {
               if (e.key === 'Enter') e.currentTarget.blur();
               if (e.key === 'Escape') {
-                setDateDraft(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
+                setDateDraft(task.dueDate ? task.dueDate.split('T')[0] : '');
                 setEditingDate(false);
               }
             }}
@@ -215,7 +218,7 @@ function TaskRow({ task, subject, now, onDelete }: { task: Task; subject?: Subje
               border: `1px solid ${T.accent}`, borderRadius: T.r1, padding: '2px 6px', outline: 'none' }}
           />
         ) : (
-          <span onClick={() => { setDateDraft(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''); setEditingDate(true); }}
+          <span onClick={() => { setDateDraft(task.dueDate ? task.dueDate.split('T')[0] : ''); setEditingDate(true); }}
             title="Clic para editar fecha" style={{ cursor: 'pointer' }}>
             {task.dueDate ? relativeLabel(task.dueDate, now) : <span style={{ color: T.inkMuted }}>—</span>}
           </span>
