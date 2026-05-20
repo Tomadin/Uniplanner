@@ -56,3 +56,14 @@ export const SUBJECT_COLORS = [
   '#D98880','#85C1A1','#E8B86D','#A7C5E8','#C9A7E8','#B5B9AE',
   '#D4B08C','#9DC9B5','#E5A89B','#B3B8E5','#D8CF9B','#A7D4C4',
 ];
+
+export function darkenHex(hex: string, factor = 0.45): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgb(${Math.round(r * factor)}, ${Math.round(g * factor)}, ${Math.round(b * factor)})`;
+}
+
+export function withAlpha(color: string, fraction: number): string {
+  return `color-mix(in srgb, ${color} ${Math.round(fraction * 100)}%, transparent)`;
+}

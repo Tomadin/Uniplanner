@@ -28,7 +28,8 @@
       "Bash(\\\\.jpg)",
       "Bash(\\\\.ico\")",
       "Bash(Select-Object -Property Name, FullName)",
-      "Bash(Format-Table -AutoSize)"
+      "Bash(Format-Table -AutoSize)",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

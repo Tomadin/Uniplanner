@@ -46,6 +46,7 @@ export interface Event {
   isExam: boolean;                    // badge diferenciado en calendario
   recurrenceRule: string | null;      // RRULE iCal p.ej. "FREQ=WEEKLY;BYDAY=MO,WE"
   recurrenceEndDate: string | null;   // ISO 8601 límite de recurrencia
+  customColor?: string | null;        // color personalizado; sobreescribe el de la materia
   updatedAt: string;
 }
 

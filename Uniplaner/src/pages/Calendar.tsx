@@ -8,7 +8,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import type { EventClickArg, DateSelectArg, EventInput } from '@fullcalendar/core';
 import { RRule } from 'rrule';
-import { T } from '../design/tokens';
+import { T, darkenHex, withAlpha, SUBJECT_COLORS } from '../design/tokens';
 import { Button, Checkbox, IconButton } from '../components/ui/Button';
 import { SectionTitle } from '../components/ui/Misc';
 import { useSubjects } from '../hooks/useSubjects';
@@ -76,7 +76,8 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, isSaving, saveE
   const [isExam,     setIsExam]     = useState(event?.isExam ?? false);
   const [rrule,      setRrule]      = useState(event?.recurrenceRule ?? '');
   const [endDate,    setEndDate]    = useState(event?.recurrenceEndDate?.slice(0, 10) ?? '');
-  const [confirmDel, setConfirmDel] = useState(false);
+  const [customColor, setCustomColor] = useState<string>(event?.customColor ?? '');
+  const [confirmDel,  setConfirmDel]  = useState(false);
 
   const valid = title.trim() && start && end;
   const isRecurring = !!event?.recurrenceRule;
@@ -91,6 +92,7 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, isSaving, saveE
       isExam,
       recurrenceRule:    rrule || null,
       recurrenceEndDate: (rrule && endDate) ? new Date(endDate).toISOString() : null,
+      customColor: customColor || null,
     });
   };
 
@@ -151,7 +153,7 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, isSaving, saveE
               placeholder="Ej: Parcial de Anatomía" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <label style={LABEL}>Inicio</label>
               <input style={INPUT} type="datetime-local" value={start} onChange={e => setStart(e.target.value)} />
@@ -168,6 +170,36 @@ function EventModal({ event, defaultStart, defaultEnd, subjects, isSaving, saveE
               <option value="">— General</option>
               {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
+          </div>
+
+          <div>
+            <label style={LABEL}>Color</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setCustomColor('')}
+                title="Color automático"
+                style={{
+                  width: 26, height: 26, borderRadius: '50%',
+                  background: T.bgAlt,
+                  border: customColor === '' ? `2px solid ${T.ink}` : `2px solid ${T.line}`,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, color: T.inkMuted, flexShrink: 0,
+                }}
+              >✕</button>
+              {SUBJECT_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCustomColor(c)}
+                  style={{
+                    width: 26, height: 26, borderRadius: '50%', background: c, flexShrink: 0,
+                    border: customColor === c ? `2px solid ${T.ink}` : '2px solid transparent',
+                    cursor: 'pointer',
+                  }}
+                />
+              ))}
+            </div>
           </div>
 
           <div>
@@ -244,14 +276,16 @@ function expandToFC(events: UPEvent[], tasks: ReturnType<typeof useTasks>['data'
 
   for (const ev of events) {
     const subj = ev.subjectId ? subjectById[ev.subjectId] : null;
-    const color = ev.isExam ? T.danger : (subj?.color ?? T.accent);
+    const color = ev.customColor ?? (ev.isExam ? T.danger : (subj?.color ?? T.accent));
     const isRecurring = !!ev.recurrenceRule;
     const isSolid = ev.isExam || (!!subj && isRecurring);
+    const textColor = color.startsWith('#') && color.length === 7 ? darkenHex(color) : (isSolid ? '#fff' : T.inkSoft);
     const base: EventInput = {
       id: ev.id,
       title: ev.title,
-      backgroundColor: isSolid ? color : color + '28',
-      borderColor:     isSolid ? color : color + '80',
+      backgroundColor: isSolid ? color : withAlpha(color, 0.16),
+      borderColor:     isSolid ? color : withAlpha(color, 0.50),
+      textColor,
       extendedProps: { upEvent: ev, isExam: ev.isExam, color, isSubjectEvent: !!subj, isRecurring },
     };
 
@@ -282,14 +316,17 @@ function expandToFC(events: UPEvent[], tasks: ReturnType<typeof useTasks>['data'
 
   for (const t of (tasks ?? [])) {
     if (!t.dueDate || t.status === 'COMPLETED' || t.status === 'CANCELLED') continue;
+    const taskSubj = t.subjectId ? subjectById[t.subjectId] : null;
+    const taskColor = taskSubj?.color ?? T.warn;
     result.push({
       id: `task_${t.id}`,
       title: t.title,
       start: t.dueDate,
       allDay: true,
-      backgroundColor: T.warn + '44',
-      borderColor: T.warn,
-      extendedProps: { isTaskDue: true },
+      backgroundColor: withAlpha(taskColor, 0.22),
+      borderColor: taskColor,
+      textColor: taskColor.startsWith('#') && taskColor.length === 7 ? darkenHex(taskColor) : T.inkSoft,
+      extendedProps: { isTaskDue: true, color: taskColor },
     });
   }
 
@@ -830,14 +867,15 @@ export function Calendar() {
                 };
 
                 if (props.isTaskDue) {
+                  const tc = (props.color as string | undefined) ?? T.warn;
                   return (
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 3,
-                      background: T.warn + '44', borderRadius: 4, overflow: 'hidden',
-                      borderLeft: `2px solid ${T.warn}`,
+                      background: withAlpha(tc, 0.22), borderRadius: 4, overflow: 'hidden',
+                      borderLeft: `2px solid ${tc}`,
                       padding: '2px 5px', width: '100%', minWidth: 0,
                       height: '100%', boxSizing: 'border-box',
-                      color: T.ink, fontSize: 11,
+                      color: tc.startsWith('#') && tc.length === 7 ? darkenHex(tc) : T.inkSoft, fontSize: 11,
                     }}>
                       <span style={{ flexShrink: 0, fontSize: 9 }}>⏰</span>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -866,7 +904,7 @@ export function Calendar() {
                       background: c, borderRadius: 5, overflow: 'hidden',
                       padding: '3px 6px', width: '100%', minWidth: 0,
                       height: '100%', boxSizing: 'border-box',
-                      color: '#fff', fontSize: 12, fontWeight: 500,
+                      color: c.startsWith('#') && c.length === 7 ? darkenHex(c) : '#fff', fontSize: 12, fontWeight: 500,
                     }}>
                       {props.isRecurring && <span style={{ flexShrink: 0, fontSize: 10, opacity: 0.75, paddingTop: 1 }}>↺</span>}
                       {props.isExam && <span style={{ flexShrink: 0, fontSize: 10, opacity: 0.75, paddingTop: 1 }}>✎</span>}
@@ -880,12 +918,12 @@ export function Calendar() {
                   return (
                     <div style={{
                       display: 'flex', alignItems: 'flex-start', gap: 4,
-                      background: c + '28', borderRadius: 5, overflow: 'hidden',
-                      borderLeft: `3px solid ${c}`, borderTop: `1px solid ${c}44`,
-                      borderRight: `1px solid ${c}44`, borderBottom: `1px solid ${c}44`,
+                      background: withAlpha(c, 0.16), borderRadius: 5, overflow: 'hidden',
+                      borderLeft: `3px solid ${c}`, borderTop: `1px solid ${withAlpha(c, 0.27)}`,
+                      borderRight: `1px solid ${withAlpha(c, 0.27)}`, borderBottom: `1px solid ${withAlpha(c, 0.27)}`,
                       padding: '3px 6px', width: '100%', minWidth: 0,
                       height: '100%', boxSizing: 'border-box',
-                      color: c, fontSize: 12, fontWeight: 600,
+                      color: c.startsWith('#') && c.length === 7 ? darkenHex(c) : T.inkSoft, fontSize: 12, fontWeight: 600,
                     }}>
                       {timeSpan}
                       {titleSpan}
@@ -897,11 +935,11 @@ export function Calendar() {
                 return (
                   <div style={{
                     display: 'flex', alignItems: 'flex-start', gap: 4,
-                    background: c + '28', borderRadius: 5, overflow: 'hidden',
+                    background: withAlpha(c, 0.16), borderRadius: 5, overflow: 'hidden',
                     borderLeft: `3px solid ${c}`,
                     padding: '3px 6px', width: '100%', minWidth: 0,
                     height: '100%', boxSizing: 'border-box',
-                    color: c, fontSize: 12, fontWeight: 600,
+                    color: c.startsWith('#') && c.length === 7 ? darkenHex(c) : T.inkSoft, fontSize: 12, fontWeight: 600,
                   }}>
                     {timeSpan}
                     {titleSpan}
