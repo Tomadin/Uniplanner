@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from 'react';
 import { useAuthStore } from './authStore';
+import { clearLocalData } from '../db/db';
 
 // ─── Configuración OAuth ───────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ interface GisTokenResponse {
 
 interface AuthContextValue {
   login: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   /** Devuelve un access token válido. Si venció, renueva silenciosamente. */
   refreshTokenSilently: () => Promise<string>;
 }
@@ -216,7 +217,9 @@ export function GoogleAuthProvider({ children }: { children: React.ReactNode }) 
     tokenClientRef.current?.requestAccessToken({ prompt: 'consent' });
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    localStorage.removeItem('uniplanner-sync-snapshot');
+    await clearLocalData().catch(console.error);
     clearAuth();
   }, [clearAuth]);
 

@@ -75,6 +75,7 @@ export interface PersonalList {
 
 export interface DriveDataFile {
   version: number;
+  userId?: string;       // ID del propietario; opcional para backward compat
   exportedAt: string;   // ISO 8601
   subjects: Subject[];
   tasks: Task[];

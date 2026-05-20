@@ -4,7 +4,7 @@ import { SyncService } from '../sync/SyncService';
 import { useAuthStore } from '../auth/authStore';
 import { useAuth } from '../auth/GoogleAuthProvider';
 import { useSyncStore } from '../store/syncStore';
-import { purgeExpiredTasks } from '../db/db';
+import { purgeExpiredTasks, clearLocalData } from '../db/db';
 
 export function useSync() {
   const { isAuthenticated } = useAuthStore();
@@ -21,6 +21,7 @@ export function useSync() {
     const svc = new SyncService({
       getAccessToken: () => useAuthStore.getState().accessToken,
       refreshToken: refreshTokenSilently,
+      getUserId: () => useAuthStore.getState().user?.id ?? null,
       onSyncStart: () => setSyncing(true),
       onSyncSuccess: () => { setSyncSuccess(); invalidateAll(); },
       onSyncError: setSyncError,
@@ -53,8 +54,19 @@ export function useSync() {
       }
     });
 
+    const currentUserId = useAuthStore.getState().user?.id;
+    const storedOwner = localStorage.getItem('up-local-data-owner');
+    const needsClear = !!(currentUserId && storedOwner && storedOwner !== currentUserId);
+    if (currentUserId) localStorage.setItem('up-local-data-owner', currentUserId);
+
     setSyncing(true);
-    svc.initialize()
+    const initChain = needsClear
+      ? clearLocalData()
+          .then(() => { localStorage.removeItem('uniplanner-sync-snapshot'); })
+          .then(() => svc.initialize())
+      : svc.initialize();
+
+    initChain
       .then(async () => {
         await purgeExpiredTasks().catch(console.error);
         setSyncSuccess();

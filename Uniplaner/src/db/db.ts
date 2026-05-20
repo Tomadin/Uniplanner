@@ -73,6 +73,18 @@ export async function importAll(data: LocalSnapshot): Promise<void> {
   });
 }
 
+export async function clearLocalData(): Promise<void> {
+  await db.transaction('rw', [db.subjects, db.tasks, db.events, db.quickNotes, db.personalLists], async () => {
+    await Promise.all([
+      db.subjects.clear(),
+      db.tasks.clear(),
+      db.events.clear(),
+      db.quickNotes.clear(),
+      db.personalLists.clear(),
+    ]);
+  });
+}
+
 // Elimina tareas completadas con más de 7 días (RF-07)
 export async function purgeExpiredTasks(): Promise<void> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();

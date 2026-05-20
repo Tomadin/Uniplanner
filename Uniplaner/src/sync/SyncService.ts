@@ -56,6 +56,8 @@ export interface SyncConfig {
   getAccessToken: () => string | null;
   /** Renueva el token via GIS y devuelve el nuevo valor. */
   refreshToken: () => Promise<string>;
+  /** Devuelve el ID del usuario autenticado actual. */
+  getUserId: () => string | null;
   onSyncStart?: () => void;
   onSyncSuccess?: () => void;
   /** Llamado tras 10 fallos consecutivos para mostrar el banner de error. */
@@ -72,24 +74,59 @@ export class SyncService {
 
   /**
    * Inicialización al arrancar la app (sec. 3.3):
-   * Busca el archivo en Drive y hace el primer pull/merge.
-   * Si no existe el archivo, lo crea con los datos locales.
+   * Busca el archivo en Drive, valida que pertenece al usuario actual,
+   * y hace el primer pull/merge. Si no existe o está contaminado, crea archivo vacío.
    */
   async initialize(): Promise<void> {
     const token = await this.getToken();
+    const currentUserId = this.config.getUserId();
     this.fileId = await driveService.findFile(token);
 
-    if (this.fileId) {
-      await this.pull(token);
-    } else {
-      const local = await exportAll();
-      const newFile: DriveDataFile = {
-        ...EMPTY_DRIVE_FILE,
-        exportedAt: new Date().toISOString(),
-        ...local,
-      };
-      this.fileId = await driveService.createFile(newFile, token);
+    const emptyFile: DriveDataFile = {
+      ...EMPTY_DRIVE_FILE,
+      userId: currentUserId ?? '',
+      exportedAt: new Date().toISOString(),
+    };
+
+    if (!this.fileId) {
+      this.fileId = await driveService.createFile(emptyFile, token);
+      return;
     }
+
+    const remote = await driveService.downloadFile(this.fileId, token);
+    if (!remote) return;
+
+    // Caso 1: userId de otro usuario → definitivamente contaminado
+    if (remote.userId && remote.userId !== currentUserId) {
+      await driveService.updateFile(this.fileId, emptyFile, token);
+      await importAll(emptyFile);
+      setLocalSyncSnapshot(emptyFile);
+      return;
+    }
+
+    // Caso 2: sin userId (archivo legacy o contaminado antes del fix)
+    if (!remote.userId) {
+      const local = await exportAll();
+      const hasLocalHistory =
+        local.subjects.length > 0 || local.tasks.length > 0 ||
+        local.events.length > 0  || local.quickNotes.length > 0 ||
+        local.personalLists.length > 0 || !!getLocalSyncSnapshot();
+
+      if (!hasLocalHistory) {
+        const lastOwner = localStorage.getItem('up-local-data-owner');
+        if (lastOwner !== currentUserId) {
+          // Diferente usuario (o desconocido) usó este dispositivo → contaminación probable
+          await driveService.updateFile(this.fileId, emptyFile, token);
+          await importAll(emptyFile);
+          setLocalSyncSnapshot(emptyFile);
+          return;
+        }
+        // Mismo usuario hizo logout y volvió → local vacío es normal → confiar en Drive
+      }
+    }
+
+    // Caso 3: userId correcto, o legacy con historial local → pull normal
+    await this.pull(token);
   }
 
   /**
@@ -193,11 +230,13 @@ export class SyncService {
     await importAll(merged);
     setLocalSyncSnapshot(remote);
 
-    // Paso 6: Subir resultado a Drive
+    // Paso 6: Subir resultado a Drive (incluir userId del usuario actual)
+    const currentUserId = this.config.getUserId();
+    const toUpload = { ...merged, userId: currentUserId ?? '' };
     if (this.fileId) {
-      await driveService.updateFile(this.fileId, merged, token);
+      await driveService.updateFile(this.fileId, toUpload, token);
     } else {
-      this.fileId = await driveService.createFile(merged, token);
+      this.fileId = await driveService.createFile(toUpload, token);
     }
   }
 }

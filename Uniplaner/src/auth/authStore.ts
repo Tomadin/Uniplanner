@@ -52,6 +52,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    localStorage.removeItem('uniplanner-sync-snapshot');
     set({ user: null, accessToken: null, isAuthenticated: false, tokenExpiry: null });
   },
 
