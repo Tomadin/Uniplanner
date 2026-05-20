@@ -98,4 +98,44 @@ describe('authStore', () => {
     const restored = useAuthStore.getState().restoreFromStorage();
     expect(restored).toBe(false);
   });
+
+  it('setAccessToken(null) limpia token y expiración del localStorage', () => {
+    useAuthStore.getState().setAccessToken('tok', 3600);
+    useAuthStore.getState().setAccessToken(null);
+    expect(useAuthStore.getState().accessToken).toBeNull();
+    expect(localStorage.getItem('up-access-token')).toBeNull();
+    expect(localStorage.getItem('up-token-expiry')).toBeNull();
+  });
+
+  it('restoreFromStorage retorna false cuando no hay datos en localStorage', () => {
+    // beforeEach limpió localStorage — verifica rama !token=true en la guarda
+    const restored = useAuthStore.getState().restoreFromStorage();
+    expect(restored).toBe(false);
+  });
+
+  it('restoreFromStorage retorna false cuando hay token pero falta expiración', () => {
+    const user = { id: 'u1', name: 'Ana', email: 'ana@test.com', picture: '' };
+    useAuthStore.getState().setUser(user);
+    localStorage.setItem('up-access-token', 'tok');
+    // up-token-expiry NO está seteado → !expiryStr=true
+    const restored = useAuthStore.getState().restoreFromStorage();
+    expect(restored).toBe(false);
+  });
+
+  it('setInitializing cambia la bandera isInitializing', () => {
+    useAuthStore.getState().setInitializing(false);
+    expect(useAuthStore.getState().isInitializing).toBe(false);
+    useAuthStore.getState().setInitializing(true);
+    expect(useAuthStore.getState().isInitializing).toBe(true);
+  });
+
+  it('restoreFromStorage retorna false si el JSON de usuario es inválido', () => {
+    localStorage.setItem('up-access-token', 'tok');
+    localStorage.setItem('up-token-expiry', String(Date.now() + 9_999_999));
+    localStorage.setItem('up-user', 'JSON ROTO {{{');
+    useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false, tokenExpiry: null });
+
+    const restored = useAuthStore.getState().restoreFromStorage();
+    expect(restored).toBe(false);
+  });
 });

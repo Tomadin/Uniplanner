@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useTasks, useAddTask, useToggleTask, useDeleteTask, useUpdateTask } from './useTasks';
@@ -150,6 +150,66 @@ describe('useUpdateTask', () => {
     const updated = await db.tasks.get(task.id);
     expect(updated?.title).toBe('Actualizado');
     expect(updated?.updatedAt).not.toBe(originalUpdatedAt);
+  });
+});
+
+describe('onError handlers', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('useAddTask — onError llama a console.error cuando Dexie falla', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db.tasks, 'add').mockRejectedValueOnce(new Error('DB fail'));
+
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useAddTask(), { wrapper });
+    await act(async () => { result.current.mutate(baseInput()); });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(consoleSpy).toHaveBeenCalledWith('[UP] useAddTask:', expect.any(Error));
+  });
+
+  it('useUpdateTask — onError llama a console.error cuando Dexie falla', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db.tasks, 'update').mockRejectedValueOnce(new Error('DB fail'));
+
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useUpdateTask(), { wrapper });
+    await act(async () => {
+      result.current.mutate({ id: 'x', changes: { title: 'Y' } });
+    });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(consoleSpy).toHaveBeenCalledWith('[UP] useUpdateTask:', expect.any(Error));
+  });
+
+  it('useToggleTask — onError llama a console.error cuando Dexie falla', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db.tasks, 'update').mockRejectedValueOnce(new Error('DB fail'));
+
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useToggleTask(), { wrapper });
+    const fakeTask: Task = {
+      id: 'x', subjectId: null, parentTaskId: null, title: 'T',
+      description: null, priority: 'MEDIUM', status: 'NOT_STARTED',
+      dueDate: null, completedAt: null, observations: null,
+      createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+    };
+    await act(async () => { result.current.mutate(fakeTask); });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(consoleSpy).toHaveBeenCalledWith('[UP] useToggleTask:', expect.any(Error));
+  });
+
+  it('useDeleteTask — onError llama a console.error cuando Dexie falla', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db.tasks, 'bulkDelete').mockRejectedValueOnce(new Error('DB fail'));
+
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useDeleteTask(), { wrapper });
+    await act(async () => { result.current.mutate('task-id'); });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(consoleSpy).toHaveBeenCalledWith('[UP] useDeleteTask:', expect.any(Error));
   });
 });
 

@@ -48,6 +48,16 @@ describe('importAll', () => {
     expect(snap.tasks[0].id).toBe('t1');
   });
 
+  it('funciona cuando personalLists no está definido (usa [] por defecto)', async () => {
+    const data = mkSnapshot({ tasks: [mkTask('t1', 'NOT_STARTED')] });
+    // Simular datos legacy sin personalLists
+    const legacy = { ...data, personalLists: undefined } as unknown as typeof data;
+    await importAll(legacy);
+    const snap = await exportAll();
+    expect(snap.personalLists).toHaveLength(0);
+    expect(snap.tasks).toHaveLength(1);
+  });
+
   it('reemplaza datos previos sin dejar registros fantasma', async () => {
     await importAll(mkSnapshot({ tasks: [mkTask('old', 'NOT_STARTED')] }));
     await importAll(mkSnapshot({ tasks: [mkTask('new', 'NOT_STARTED')] }));

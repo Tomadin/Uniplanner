@@ -157,6 +157,20 @@ describe('mergeLastWriteWins — edge cases', () => {
     expect(result.events).toHaveLength(0);
   });
 
+  it('usa version=1 y arrays vacíos cuando remote no tiene esos campos (null coalescing)', () => {
+    const result = mergeLastWriteWins(
+      { exportedAt: '2026-01-01T00:00:00Z' } as unknown as DriveDataFile,
+      emptyLocal(),
+      null,
+    );
+    expect(result.version).toBe(1);
+    expect(result.subjects).toHaveLength(0);
+    expect(result.tasks).toHaveLength(0);
+    expect(result.events).toHaveLength(0);
+    expect(result.quickNotes).toHaveLength(0);
+    expect(result.personalLists).toHaveLength(0);
+  });
+
   it('las colecciones se mergean de forma independiente', () => {
     const s = mkSubject('s1', '2026-05-01T00:00:00Z');    // solo en remote → eliminado localmente
     const t = mkTask('t1', '2026-05-01T00:00:00Z');        // solo en local → se incluye
