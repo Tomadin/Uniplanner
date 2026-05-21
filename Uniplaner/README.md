@@ -87,7 +87,7 @@ Antes de levantar el proyecto necesitás crear un Client ID de OAuth 2.0.
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/<tu-usuario>/Uniplaner.git
+git clone https://github.com/Tomadin/Uniplaner.git
 cd Uniplaner
 
 # 2. Instalar dependencias
