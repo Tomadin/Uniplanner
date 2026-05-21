@@ -40,7 +40,7 @@ function mkTask(id: string): Task {
 function mkConfig(overrides: Partial<ConstructorParameters<typeof SyncService>[0]> = {}) {
   return {
     getAccessToken: (): string | null => 'token',
-    refreshToken:   vi.fn<[], Promise<string>>().mockResolvedValue('new-token'),
+    refreshToken:   vi.fn<() => Promise<string>>().mockResolvedValue('new-token'),
     getUserId:      (): string | null => 'user-A',
     onSyncStart:    vi.fn(),
     onSyncSuccess:  vi.fn(),
